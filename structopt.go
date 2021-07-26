@@ -2,14 +2,19 @@ package structopt
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/cmj0121/logger"
 )
 
 // The struct parser as the argument options.
 type StructOpt struct {
+	// Name of the command-line, default is the name of struct
+	Name string
+
 	// The raw value of the input struct, should be the pointer of the value.
 	reflect.Value
 
@@ -30,8 +35,12 @@ func New(in interface{}) (opt *StructOpt, err error) {
 	}
 
 	opt = &StructOpt{
+		Name:  strings.ToLower(value.Elem().Type().Name()),
 		Value: value,
 		Log:   logger.New(PROJ_NAME),
+
+		options:       []*Option{},
+		named_options: map[string]*Option{},
 	}
 	opt.Writer(os.Stderr)
 	// opt.Level(logger.TRACE)
@@ -52,23 +61,43 @@ func MustNew(in interface{}) (opt *StructOpt) {
 	return
 }
 
-// Show the usage message in the STDOUT
-func (opt *StructOpt) Usage() {
-	usage := opt.UsageString()
-	fmt.Println(usage)
+// Show the usage message in the STDERR
+func (opt *StructOpt) Usage(err error) {
+	// show the message on STDERR
+	opt.WriteUsage(os.Stderr, err)
 }
 
-// Get the usage as the string
-func (opt *StructOpt) UsageString() (usage string) {
-	return
+// Write the usage message
+func (opt *StructOpt) WriteUsage(writer io.Writer, err error) {
+	show_message := func(writer io.Writer, format string, args ...interface{}) {
+		msg := fmt.Sprintf(format+"\n", args...)
+		// exact write the message via Writer
+		if _, err := writer.Write([]byte(msg)); err != nil {
+			// cannot write, show as error message
+			opt.Error("cannot write to Writer: %v", err)
+		}
+	}
+
+	if err != nil {
+		// show the error message
+		show_message(writer, "error: %v", err)
+	}
+
+	show_message(writer, "usage: %v", opt.Name)
+	if len(opt.options) > 0 {
+		show_message(writer, "")
+		show_message(writer, "options:")
+		for _, option := range opt.options {
+			show_message(writer, "%v", option)
+		}
+	}
 }
 
 // Run as default command-line parser, read from os.Args and show error and usage when parse error.
 func (opt *StructOpt) Run() {
 	if err := opt.Parse(os.Args[1:]...); err != nil {
 		// show the error message
-		opt.Error("error: %v", err)
-		opt.Error(opt.UsageString())
+		opt.Usage(err)
 		// and then exit the program
 		os.Exit(1)
 	}
@@ -149,7 +178,7 @@ func (opt *StructOpt) prepare() (err error) {
 		}
 		opt.named_options[name] = option
 		// the short-name option, if exist
-		if name = option.ShortName(); name != "" {
+		if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
 			if _, ok := opt.named_options[name]; ok {
 				err = fmt.Errorf("duplicated option name: %v", name)
 				return

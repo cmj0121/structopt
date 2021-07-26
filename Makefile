@@ -5,9 +5,10 @@ SRC := $(wildcard *.go)
 all: 		# build all
 	pre-commit install
 	gofmt -w -s $(SRC)
-	go test -v -cover -failfast -timeout 2s
+	go test -cover -failfast -timeout 2s
 
 clean:		# clean-up the environment
+	@find . -name '*.swp' -delete
 
 help:		# show this message
 	@printf "Usage: make [OPTION]\n"
