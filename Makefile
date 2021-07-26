@@ -5,7 +5,7 @@ SRC := $(wildcard *.go)
 all: 		# build all
 	pre-commit install
 	gofmt -w -s $(SRC)
-	go  test -v -cover -failfast -timeout 2s
+	go test -v -cover -failfast -timeout 2s
 
 clean:		# clean-up the environment
 

@@ -23,15 +23,3 @@ func TestInvalidInput(t *testing.T) {
 		}
 	}
 }
-
-type Dummy struct {
-	Name string
-	Age  int
-}
-
-func ExampleStructOpt() {
-	dummy := Dummy{}
-	parse := MustNew(&dummy)
-	parse.Parse("-n", "name", "--age", "21") // nolint
-	// Output:
-}

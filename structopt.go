@@ -15,6 +15,9 @@ type StructOpt struct {
 
 	// The inner log sub-system, used for trace and warning log.
 	*logger.Log
+
+	options       []*Option
+	named_options map[string]*Option
 }
 
 // Generate the parse by input struct, or return error message.
@@ -33,7 +36,7 @@ func New(in interface{}) (opt *StructOpt, err error) {
 	opt.Writer(os.Stderr)
 	// opt.Level(logger.TRACE)
 
-	err = opt.parse()
+	err = opt.prepare()
 	return
 }
 
@@ -107,7 +110,7 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 }
 
 // Start parse the field of the struct, and raise error if not support field or wrong setting.
-func (opt *StructOpt) parse() (err error) {
+func (opt *StructOpt) prepare() (err error) {
 	value := opt.Value.Elem()
 	typ := value.Type()
 
@@ -130,6 +133,28 @@ func (opt *StructOpt) parse() (err error) {
 
 		// process the field what we need
 		opt.Info("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
+
+		var option *Option
+		if option, err = NewOption(field, v, opt.Log); err != nil {
+			// invalid option
+			return
+		}
+		// append to the option-list
+		opt.options = append(opt.options, option)
+		// the named option
+		name := option.Name()
+		if _, ok := opt.named_options[name]; ok {
+			err = fmt.Errorf("duplicated option name: %v", name)
+			return
+		}
+		opt.named_options[name] = option
+		// the short-name option, if exist
+		if name = option.ShortName(); name != "" {
+			if _, ok := opt.named_options[name]; ok {
+				err = fmt.Errorf("duplicated option name: %v", name)
+				return
+			}
+		}
 	}
 	return
 }
