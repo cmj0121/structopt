@@ -83,7 +83,13 @@ func (opt *StructOpt) WriteUsage(writer io.Writer, err error) {
 		show_message(writer, "error: %v", err)
 	}
 
-	show_message(writer, "usage: %v", opt.Name)
+	usage_bar := fmt.Sprintf("usage: %v", opt.Name)
+	if len(opt.options) > 0 {
+		// add the [OPTION]
+		usage_bar = fmt.Sprintf("%v [OPTION]", usage_bar)
+	}
+
+	show_message(writer, usage_bar)
 	if len(opt.options) > 0 {
 		show_message(writer, "")
 		show_message(writer, "options:")
@@ -108,7 +114,46 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 	disable_short_option := false
 	disable_option := false
 
-	for idx, arg := range args {
+	idx := 0
+
+	// the inner functin, which may increate the argument and auto-increate
+	// index, or return error
+	set_args := func(arg, key string) (err error) {
+		// Set the value of the specified arg in the args, and rethrn the next index or error
+		option, ok := opt.named_options[key]
+		if !ok {
+			// cannot found the option by name
+			opt.Warn("cannot find %#v in %#v", key, opt.Name)
+			err = fmt.Errorf("%#v not defined in %#v", arg, opt.Name)
+			return
+		}
+
+		switch option.Type() {
+		case Ignore:
+		case Flip:
+			if err = option.Set(""); err != nil {
+				err = fmt.Errorf("cannot set %v: %v", option.Name(), err)
+				return
+			}
+		case Flag:
+			if idx += 1; idx >= len(args) {
+				err = fmt.Errorf("%v should pass %v", option.Name(), option.TypeHint())
+				return
+			}
+			if err = option.Set(args[idx]); err != nil {
+				err = fmt.Errorf("cannot set %v: %v", option.Name(), err)
+				return
+			}
+		default:
+			err = fmt.Errorf("not implemented to set %v", option.Type())
+			return
+		}
+
+		return
+	}
+
+	for idx < len(args) {
+		arg := args[idx]
 		opt.Trace("parse #%v argument: %#v", idx, arg)
 
 		switch {
@@ -125,6 +170,10 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 		case len(arg) > 1 && !disable_option && arg[:2] == "--":
 			// long option
 			opt.Info("#%v argument %#v: option: %#v", idx, arg, arg[2:])
+			if err = set_args(arg, arg[2:]); err != nil {
+				// cannot set args
+				return
+			}
 		case !disable_short_option && arg[:1] == "-":
 			// short option
 			opt.Trace("#%v argument %#v: short option: %#v", idx, arg, arg[1:])
@@ -132,17 +181,28 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 			case 1:
 				// single short option
 				opt.Info("#%v argument %#v: single short option: %#v", idx, arg, arg[1:])
+				if err = set_args(arg, arg[1:]); err != nil {
+					// cannot set args
+					return
+				}
 			default:
 				// multi- short options
 				for short_opt_idx, short_opt := range arg[1:] {
 					opt.Info("#%v argument %#v: #%v short option: %#v", idx, arg, short_opt_idx, string(short_opt))
+					if err = set_args(arg, string(short_opt)); err != nil {
+						// cannot set args
+						return
+					}
 				}
 			}
 		default:
 			// argument
 			opt.Info("#%v argument %#v", idx, arg)
 		}
+
+		idx++
 	}
+
 	return
 }
 
@@ -185,12 +245,15 @@ func (opt *StructOpt) prepare() (err error) {
 			return
 		}
 		opt.named_options[name] = option
+		opt.Trace("set %#v as option", name)
 		// the short-name option, if exist
 		if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
+			opt.Trace("set %#v as option", name)
 			if _, ok := opt.named_options[name]; ok {
 				err = fmt.Errorf("duplicated option name: %v", name)
 				return
 			}
+			opt.named_options[name] = option
 		}
 	}
 	return

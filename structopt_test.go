@@ -48,7 +48,7 @@ func Example() {
 	parser := MustNew(&dummy)
 	parser.WriteUsage(os.Stdout, nil)
 	// Output:
-	// usage: dummy
+	// usage: dummy [OPTION]
 	//
 	// options:
 	//     -f       --flip              store true/false
@@ -70,7 +70,7 @@ func ExampleT() {
 
 	parser.WriteUsage(os.Stdout, nil)
 	// Output:
-	// usage: foo
+	// usage: foo [OPTION]
 	//
 	// options:
 	//     -f       --flip              store true/false

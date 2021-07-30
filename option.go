@@ -145,10 +145,57 @@ func (option *Option) Name() (name string) {
 	return
 }
 
+// Set the field from the pass value
+func (option *Option) Set(value string) (err error) {
+	if !option.Value.CanSet() {
+		err = fmt.Errorf("%v cannot set", value)
+		return
+	}
+
+	switch option.option_type {
+	case Ignore:
+		// need not operation and should not be called
+		err = fmt.Errorf("OPTION %v (%v) should not call Set", option.Name(), option.type_hint)
+	case Flip:
+		if value != "" {
+			err = fmt.Errorf("set FLIP should not pass any value")
+			return
+		}
+
+		option.Trace("flip to %v", !option.Value.Bool())
+		option.Value.SetBool(!option.Value.Bool())
+	case Flag:
+		switch option.type_hint {
+		case TYPEHINT_STR:
+			// set string as value
+			option.Value.SetString(value)
+		default:
+			// not implemented
+			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
+			return
+		}
+	default:
+		// not implemented
+		err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.option_type)
+		return
+	}
+	return
+}
+
+// The type of the option
+func (option *Option) Type() (option_type OptionType) {
+	option_type = option.option_type
+	return
+}
+
+// The type-hint of the option
+func (option *Option) TypeHint() (type_hint OptionTypeHint) {
+	type_hint = option.type_hint
+	return
+}
+
 // set the option type and type hint
 func (option *Option) setValue(value reflect.Value) (err error) {
-	option.Debug("set %v as option", value)
-
 	switch value.Interface().(type) {
 	case *os.File:
 		// the flag / os.File
