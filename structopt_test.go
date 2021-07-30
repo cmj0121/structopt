@@ -27,6 +27,7 @@ func TestInvalidInput(t *testing.T) {
 
 type Dummy struct {
 	Flip bool `short:"f" help:"store true/false"`
+	Age  int  `short:"年" help:"The utf-8 shortcut"`
 }
 
 func Example() {
@@ -38,6 +39,7 @@ func Example() {
 	//
 	// options:
 	//     -f  --flip        store true/false
+	//     -年 --age         The utf-8 shortcut
 }
 
 func ExampleT() {
@@ -51,4 +53,5 @@ func ExampleT() {
 	//
 	// options:
 	//     -f  --flip        store true/false
+	//     -年 --age         The utf-8 shortcut
 }

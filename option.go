@@ -65,7 +65,17 @@ func NewOption(sfield reflect.StructField, value reflect.Value, log *logger.Log)
 func (option *Option) String() (str string) {
 	// show as the formatted option which has three parts: margin, option and help
 	help, _ := option.Lookup(TAG_HELP)
-	str = fmt.Sprintf("    -f  --flip        %v", help)
+
+	short_name, _ := option.Lookup(TAG_SHORT)
+	if len(short_name) > 0 {
+		// add the leading -
+		short_name = "-" + short_name
+	}
+	short_width_offset := len(short_name) - WidecharSize(short_name)
+	flag := fmt.Sprintf("%-*v --%v", 3-short_width_offset, short_name, option.Name())
+
+	flag_width_offset := len(flag) - WidecharSize(flag)
+	str = fmt.Sprintf("    %-*v %v", 17-flag_width_offset, flag, help)
 	str = strings.TrimRight(str, " ")
 	return
 }
