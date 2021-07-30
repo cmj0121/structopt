@@ -1,8 +1,10 @@
 package structopt
 
 import (
+	"net"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestInvalidInput(t *testing.T) {
@@ -30,6 +32,15 @@ type Dummy struct {
 	Age     uint    `short:"a" help:"field with type hint"`
 	Price   float32 `help:"the sign float number"`
 	Unicode string  `short:"多" name:"ユニコード" help:"the UTF-8 unicode option"`
+
+	// pre-define type
+	*os.File    `help:"open file, default is Read-Only"`
+	time.Time   `help:"the timestamp of RFC-3339 format"`
+	os.FileMode `help:"oct-based file permission"`
+
+	IFace  net.Interface `help:"network interface"`
+	CIDR   net.IPNet     `help:"network address with mask, CIDR"`
+	net.IP `help:"the IPv4/IPv6 address"`
 }
 
 func Example() {
@@ -44,6 +55,12 @@ func Example() {
 	//     -a  UINT --age UINT          field with type hint
 	//              --price RAT         the sign float number
 	//     -多 STR  --ユニコード STR    the UTF-8 unicode option
+	//              --file FILE         open file, default is Read-Only
+	//              --time TIME         the timestamp of RFC-3339 format
+	//              --filemode FMODE    oct-based file permission
+	//              --iface IFACE       network interface
+	//              --cidr CIDR         network address with mask, CIDR
+	//              --ip IP             the IPv4/IPv6 address
 }
 
 func ExampleT() {
@@ -60,4 +77,10 @@ func ExampleT() {
 	//     -a  UINT --age UINT          field with type hint
 	//              --price RAT         the sign float number
 	//     -多 STR  --ユニコード STR    the UTF-8 unicode option
+	//              --file FILE         open file, default is Read-Only
+	//              --time TIME         the timestamp of RFC-3339 format
+	//              --filemode FMODE    oct-based file permission
+	//              --iface IFACE       network interface
+	//              --cidr CIDR         network address with mask, CIDR
+	//              --ip IP             the IPv4/IPv6 address
 }

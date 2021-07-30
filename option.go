@@ -2,11 +2,13 @@ package structopt
 
 import (
 	"fmt"
+	"net"
+	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/cmj0121/logger"
-	"golang.org/x/text/width"
 )
 
 // The enum type of the option
@@ -39,9 +41,19 @@ const (
 	TYPEHINT_STR
 	// the file-path, an will be auto-open
 	TYPEHINT_FILE
+	// the file-permission
+	TYPEHINT_FILE_MODE
+	// the RFC-3389 format timestamp
+	TYPEHINT_TIME
+	// the network interface
+	TYPEHINT_IFACE
+	// the network IPv4 / IPv6 address
+	TYPEHINT_IP
+	// the network IPv4 / IPv6 address with mask, CIDR
+	TYPEHINT_CIDR
 )
 
-// The type-hint of the option type, max to 4-chars
+// The type-hint of the option type, max to 5-chars
 func (hint OptionTypeHint) String() (str string) {
 	switch hint {
 	case TYPEHINT_INT:
@@ -54,12 +66,24 @@ func (hint OptionTypeHint) String() (str string) {
 		str = "STR"
 	case TYPEHINT_FILE:
 		str = "FILE"
+	case TYPEHINT_FILE_MODE:
+		str = "FMODE"
+	case TYPEHINT_TIME:
+		str = "TIME"
+	case TYPEHINT_IFACE:
+		str = "IFACE"
+	case TYPEHINT_IP:
+		str = "IP"
+	case TYPEHINT_CIDR:
+		str = "CIDR"
 	}
 	return
 }
 
 // The option of the StructOpt and used to process the input arguments
 type Option struct {
+	*logger.Log
+
 	// The related reflect.Value of the StructOpt, can set the value directly.
 	reflect.Value
 	// The save field tag
@@ -78,6 +102,7 @@ type Option struct {
 // Generate the option by the reflect.StructOption, pass from the StructOpt.parse
 func NewOption(sfield reflect.StructField, value reflect.Value, log *logger.Log) (option *Option, err error) {
 	option = &Option{
+		Log:       log,
 		Value:     value,
 		StructTag: sfield.Tag,
 
@@ -86,33 +111,7 @@ func NewOption(sfield reflect.StructField, value reflect.Value, log *logger.Log)
 		type_hint:   TYPEHINT_NONE,
 	}
 
-	switch value.Kind() {
-	case reflect.Bool:
-		// the flip
-		option.option_type = Flip
-		option.type_hint = TYPEHINT_NONE
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		// the flag / sign-int
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_INT
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		// the flag / sign-int
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_UINT
-	case reflect.Float32, reflect.Float64:
-		// the flag / sign-rational number
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_RAT
-	case reflect.String:
-		// the flag / string
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_STR
-	default:
-		// as the flag
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_NONE
-	}
-
+	err = option.setValue(value)
 	return
 }
 
@@ -137,6 +136,7 @@ func (option *Option) String() (str string) {
 	return
 }
 
+// The option primary name
 func (option *Option) Name() (name string) {
 	if name, _ = option.Lookup(TAG_NAME); name == "" {
 		// using the raw field name
@@ -145,15 +145,66 @@ func (option *Option) Name() (name string) {
 	return
 }
 
-// [UTILITY] calculate the multi-char length
-func WidecharSize(s string) (size int) {
-	for _, r := range s {
-		switch p := width.LookupRune(r); p.Kind() {
-		case width.EastAsianWide:
-			size += 2
+// set the option type and type hint
+func (option *Option) setValue(value reflect.Value) (err error) {
+	option.Debug("set %v as option", value)
+
+	switch value.Interface().(type) {
+	case *os.File:
+		// the flag / os.File
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_FILE
+	case *net.Interface:
+		// the flag / os.File
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_IFACE
+	case os.FileMode:
+		// the flag / os.FileMode
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_FILE_MODE
+	case time.Time:
+		// the flag / os.File
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_TIME
+	case net.Interface:
+		// the flag / net.Interface
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_IFACE
+	case net.IP:
+		// the flag / net.IP
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_IP
+	case net.IPNet:
+		// the flag / net.IPNet
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_CIDR
+	default:
+		switch typ := value.Type(); typ.Kind() {
+		case reflect.Bool:
+			// the flip
+			option.option_type = Flip
+			option.type_hint = TYPEHINT_NONE
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			// the flag / sign-int
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_INT
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			// the flag / sign-int
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_UINT
+		case reflect.Float32, reflect.Float64:
+			// the flag / sign-rational number
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_RAT
+		case reflect.String:
+			// the flag / string
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_STR
 		default:
-			size += 1
+			option.Error("unhandle field type %v", typ)
+			err = fmt.Errorf("unhandle field type %v", typ)
 		}
 	}
+
 	return
 }
