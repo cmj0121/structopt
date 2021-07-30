@@ -1,14 +1,14 @@
-.PHONY: all clean help
+.PHONY: all clean help lint
 
-SRC := $(wildcard *.go)
+SRC := $(wildcard *.go) $(wildcard */*.go)
+BIN := examples/example
 
-all: 		# build all
-	pre-commit install
-	gofmt -w -s $(SRC)
-	go test -cover -failfast -timeout 2s
+all: $(BIN)	# build all
+	@pre-commit install
 
 clean:		# clean-up the environment
 	@find . -name '*.swp' -delete
+	rm -f $(BIN)
 
 help:		# show this message
 	@printf "Usage: make [OPTION]\n"
@@ -18,3 +18,12 @@ help:		# show this message
 
 doc:		# show the document in local
 	godoc -server=localhost:8080 hello.go
+
+$(BIN): lint
+
+lint:
+	gofmt -w -s $(SRC)
+	go test -cover -failfast -timeout 2s
+
+%: %.go
+	go build -o $@ $<

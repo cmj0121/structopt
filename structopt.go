@@ -112,27 +112,35 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 		opt.Trace("parse #%v argument: %#v", idx, arg)
 
 		switch {
-		case arg == "":
+		case len(arg) == 0:
 			// empty argument, skip
 		case !disable_short_option && arg == "-":
 			// disable short option
-			opt.Trace("disable short option")
+			opt.Debug("#%v argument %#v: disable short option", idx, arg)
 		case !disable_option && arg == "--":
 			// disable option
 			disable_short_option = true
 			disable_option = true
-			opt.Trace("disable option")
-		case !disable_option && arg[:2] == "--":
+			opt.Debug("#%v argument %#v: disable option", idx, arg)
+		case len(arg) > 1 && !disable_option && arg[:2] == "--":
 			// long option
-			opt.Info("option: %#v", arg[2:])
+			opt.Info("#%v argument %#v: option: %#v", idx, arg, arg[2:])
 		case !disable_short_option && arg[:1] == "-":
 			// short option
-			opt.Info("short option: %#v", arg[1:])
-			// single short option
-			// multi- short options
+			opt.Trace("#%v argument %#v: short option: %#v", idx, arg, arg[1:])
+			switch len([]rune(arg[1:])) {
+			case 1:
+				// single short option
+				opt.Info("#%v argument %#v: single short option: %#v", idx, arg, arg[1:])
+			default:
+				// multi- short options
+				for short_opt_idx, short_opt := range arg[1:] {
+					opt.Info("#%v argument %#v: #%v short option: %#v", idx, arg, short_opt_idx, string(short_opt))
+				}
+			}
 		default:
 			// argument
-			opt.Info("argument: %#v", arg)
+			opt.Info("#%v argument %#v", idx, arg)
 		}
 	}
 	return
@@ -150,7 +158,7 @@ func (opt *StructOpt) prepare() (err error) {
 		// check the field can set or not
 		v := value.Field(idx)
 		opt.Trace(
-			"#%d field in %T: %-6v (%v) %v",
+			"#%d field in %v: %-6v (%-8v canset: %v)",
 			idx, typ, field.Name, field.Type, v.CanSet(),
 		)
 
@@ -161,7 +169,7 @@ func (opt *StructOpt) prepare() (err error) {
 		}
 
 		// process the field what we need
-		opt.Info("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
+		opt.Trace("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
 
 		var option *Option
 		if option, err = NewOption(field, v, opt.Log); err != nil {

@@ -1,1 +1,4 @@
 *.sw[po]
+
+examples/*
+!examples/*.go
