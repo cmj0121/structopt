@@ -2,11 +2,9 @@ package structopt
 
 import (
 	"fmt"
-	"math/big"
 	"net"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -183,7 +181,7 @@ func (option *Option) Set(value string) (err error) {
 			option.Value.SetString(value)
 		case TYPEHINT_INT:
 			var val int64
-			if val, err = option.AtoI(value); err == nil {
+			if val, err = AtoI(value); err == nil {
 				// set string as Int64
 				option.Value.SetInt(val)
 				// check the value is overflow for the raw field type
@@ -197,7 +195,7 @@ func (option *Option) Set(value string) (err error) {
 			}
 		case TYPEHINT_UINT:
 			var val uint64
-			if val, err = option.AtoU(value); err == nil {
+			if val, err = AtoU(value); err == nil {
 				// set string as Int64
 				option.Value.SetUint(val)
 				// check the value is overflow for the raw field type
@@ -211,7 +209,7 @@ func (option *Option) Set(value string) (err error) {
 			}
 		case TYPEHINT_RAT:
 			var val float64
-			if val, err = option.AtoF(value); err == nil {
+			if val, err = AtoF(value); err == nil {
 				// set string as Float64
 				option.Value.SetFloat(val)
 			}
@@ -237,90 +235,6 @@ func (option *Option) Type() (option_type OptionType) {
 // The type-hint of the option
 func (option *Option) TypeHint() (type_hint OptionTypeHint) {
 	type_hint = option.type_hint
-	return
-}
-
-// the strconv.Atoi wrapper for process the hexadecimal or other format
-func (option *Option) AtoI(s string) (val int64, err error) {
-	minus := false
-	if len(s) > 0 && s[0] == '-' {
-		minus = true
-		s = s[1:]
-	}
-
-	switch {
-	case RE_HEX.MatchString(s):
-		if s = s[2:]; minus {
-			s = "-" + s
-		}
-		val, err = strconv.ParseInt(s, 16, 64)
-	case RE_OCT.MatchString(s):
-		if s = s[2:]; minus {
-			s = "-" + s
-		}
-		val, err = strconv.ParseInt(s, 8, 64)
-	case RE_BIN.MatchString(s):
-		if s = s[2:]; minus {
-			s = "-" + s
-		}
-		val, err = strconv.ParseInt(s, 2, 64)
-	case RE_INT.MatchString(s):
-		if minus {
-			s = "-" + s
-		}
-		val, err = strconv.ParseInt(s, 10, 64)
-	default:
-		err = fmt.Errorf("not the sign INT: %v", s)
-		return
-	}
-
-	return
-}
-
-// the strconv.Atoi wrapper for process the hexadecimal or other format
-func (option *Option) AtoU(s string) (val uint64, err error) {
-	switch {
-	case RE_HEX.MatchString(s):
-		val, err = strconv.ParseUint(s[2:], 16, 64)
-	case RE_OCT.MatchString(s):
-		val, err = strconv.ParseUint(s[2:], 8, 64)
-	case RE_BIN.MatchString(s):
-		val, err = strconv.ParseUint(s[2:], 2, 64)
-	case RE_INT.MatchString(s):
-		val, err = strconv.ParseUint(s, 10, 64)
-	default:
-		err = fmt.Errorf("not the sign INT: %v", s)
-		return
-	}
-	return
-}
-
-func (option *Option) AtoF(s string) (val float64, err error) {
-	switch {
-	case RE_FLOAT.MatchString(s):
-		val, err = strconv.ParseFloat(s, 64)
-	case RE_RAT.MatchString(s):
-		pattern := strings.Split(s, "/")
-		var num int64
-		var denom int64
-
-		if num, err = option.AtoI(pattern[0]); err != nil {
-			// invalid numerator
-			return
-		}
-		if denom, err = option.AtoI(pattern[1]); err != nil {
-			// invalid denominator
-			return
-		}
-
-		rat := big.NewRat(num, denom)
-		val, _ = rat.Float64()
-
-	default:
-		err = fmt.Errorf("not the RAT: %v", s)
-		return
-	}
-
 	return
 }
 
