@@ -1,4 +1,4 @@
-module github.com/cmj0121/structotp
+module github.com/cmj0121/structopt
 
 go 1.16
 

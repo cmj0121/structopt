@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/cmj0121/structotp"
+	"github.com/cmj0121/structopt"
 )
 
 type Example struct {
