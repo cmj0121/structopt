@@ -102,6 +102,14 @@ func TestStructOpt(t *testing.T) {
 	if err := parse.Parse("--base", "0x1234"); err != nil || dummy.Base != 0x34 {
 		t.Fatalf("expect INT is workable: %v (%v)", dummy.Base, err)
 	}
+
+	if err := parse.Parse("--price", "1.23"); err != nil || dummy.Price != 1.23 {
+		t.Fatalf("expect RAT is workable: %v (%v)", dummy.Price, err)
+	}
+
+	if err := parse.Parse("--price", "-5/4"); err != nil || dummy.Price != -1.25 {
+		t.Fatalf("expect RAT is workable: %v (%v)", dummy.Price, err)
+	}
 }
 
 func Example() {

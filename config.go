@@ -50,4 +50,7 @@ var (
 	RE_BIN = regexp.MustCompile(`(:?0[bB])[01]+`)
 	RE_OCT = regexp.MustCompile(`(:?0[oO])[0-7]+`)
 	RE_HEX = regexp.MustCompile(`(:?0[xX])[0-9a-fA-F]+`)
+
+	RE_FLOAT = regexp.MustCompile(`-?(?:0|[1-9][0-9]*)?\.[0-9]+`)
+	RE_RAT   = regexp.MustCompile(`-?(?:0|[1-9][0-9]*)/-?[1-9][0-9]*`)
 )

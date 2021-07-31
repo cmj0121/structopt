@@ -2,6 +2,7 @@ package structopt
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"os"
 	"reflect"
@@ -208,6 +209,12 @@ func (option *Option) Set(value string) (err error) {
 					}
 				}
 			}
+		case TYPEHINT_RAT:
+			var val float64
+			if val, err = option.AtoF(value); err == nil {
+				// set string as Float64
+				option.Value.SetFloat(val)
+			}
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
@@ -285,6 +292,35 @@ func (option *Option) AtoU(s string) (val uint64, err error) {
 		err = fmt.Errorf("not the sign INT: %v", s)
 		return
 	}
+	return
+}
+
+func (option *Option) AtoF(s string) (val float64, err error) {
+	switch {
+	case RE_FLOAT.MatchString(s):
+		val, err = strconv.ParseFloat(s, 64)
+	case RE_RAT.MatchString(s):
+		pattern := strings.Split(s, "/")
+		var num int64
+		var denom int64
+
+		if num, err = option.AtoI(pattern[0]); err != nil {
+			// invalid numerator
+			return
+		}
+		if denom, err = option.AtoI(pattern[1]); err != nil {
+			// invalid denominator
+			return
+		}
+
+		rat := big.NewRat(num, denom)
+		val, _ = rat.Float64()
+
+	default:
+		err = fmt.Errorf("not the RAT: %v", s)
+		return
+	}
+
 	return
 }
 
