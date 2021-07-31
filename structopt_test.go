@@ -30,7 +30,7 @@ func TestInvalidInput(t *testing.T) {
 type Dummy struct {
 	Flip bool `short:"f" help:"store true/false"`
 
-	Age    uint  `short:"a" help:"field with type hint"`
+	Age    uint  `short:"a" name:"âge" help:"The utf-8 field"`
 	Amount int64 `short:"A" help:"the sign integer"`
 	Base   int8  `short:"b" help:"check base" option:"trunc"`
 
@@ -59,11 +59,11 @@ func TestStructOpt(t *testing.T) {
 		t.Fatalf("expect multi-flip is workable: %v (%v)", dummy.Flip, err)
 	}
 
-	if err := parse.Parse("--age", "12"); err != nil || dummy.Age != 12 {
+	if err := parse.Parse("--âge", "12"); err != nil || dummy.Age != 12 {
 		t.Fatalf("expect UINT is workable: %v (%v)", dummy.Age, err)
 	}
 
-	if err := parse.Parse("--age", "18446744073709551615"); err != nil || dummy.Age != 18446744073709551615 {
+	if err := parse.Parse("--âge", "18446744073709551615"); err != nil || dummy.Age != 18446744073709551615 {
 		t.Fatalf("expect UINT is workable: %v (%v)", dummy.Age, err)
 	}
 
@@ -123,7 +123,7 @@ func Example() {
 	//
 	// options:
 	//     -f       --flip              store true/false
-	//     -a  UINT --age UINT          field with type hint
+	//     -a  UINT --âge UINT          The utf-8 field
 	//     -A  INT  --amount INT        the sign integer
 	//     -b  INT  --base INT          check base
 	//              --price RAT         the sign float number

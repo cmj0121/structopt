@@ -136,13 +136,13 @@ func (option *Option) String() (str string) {
 	short_name, _ := option.Lookup(TAG_SHORT)
 	if len(short_name) > 0 {
 		// add the leading -
-		short_name_offset := len(short_name) - WidecharSize(short_name)
+		short_name_offset := WidecharSize(short_name) - len([]rune(short_name))
 		short_name = fmt.Sprintf("-%-*v %v", 2-short_name_offset, short_name, type_hint)
 	}
-	short_width_offset := len(short_name) - WidecharSize(short_name)
+	short_width_offset := WidecharSize(short_name) - len([]rune(short_name))
 	flag := fmt.Sprintf("%-*v --%v %v", 8-short_width_offset, short_name, option.Name(), type_hint)
 
-	flag_width_offset := len(flag) - WidecharSize(flag)
+	flag_width_offset := WidecharSize(flag) - len([]rune(flag))
 	str = fmt.Sprintf("    %-*v %v", 28-flag_width_offset, flag, help)
 	str = strings.TrimRight(str, " ")
 	return
