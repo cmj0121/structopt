@@ -7,6 +7,8 @@ import (
 )
 
 type Example struct {
+	structopt.Help
+
 	Flip bool   `short:"f" help:"flip the variable"`
 	Name string `short:"n" help:"Enter your name"`
 	Age  int    `short:"年" name:"âge" help:"The utf-8 field"`
