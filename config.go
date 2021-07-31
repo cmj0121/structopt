@@ -1,6 +1,8 @@
 package structopt
 
 import (
+	"regexp"
+
 	"golang.org/x/text/width"
 )
 
@@ -16,12 +18,17 @@ const (
 
 // pre-define TAG key
 const (
-	// reserved key of the field tag
-	TAG_OPTION = "option"
-	TAG_NAME   = "name"
-	TAG_SHORT  = "short"
-	TAG_HELP   = "help"
 	TAG_IGNORE = "-"
+	// reserved key of the field tag
+	TAG_NAME  = "name"
+	TAG_SHORT = "short"
+	TAG_HELP  = "help"
+
+	// special tag which no-need provide the valie
+	TAG_OPTION     = "option"
+	TAG_OPTION_SEP = ","
+	// used to node the field allow data truncated
+	TAG_TRUNC = "trunc"
 )
 
 // [UTILITY] calculate the multi-char length
@@ -36,3 +43,11 @@ func WidecharSize(s string) (size int) {
 	}
 	return
 }
+
+// pre-define the INT/UINT format
+var (
+	RE_INT = regexp.MustCompile(`0|[1-9][0-9]*`)
+	RE_BIN = regexp.MustCompile(`(:?0[bB])[01]+`)
+	RE_OCT = regexp.MustCompile(`(:?0[oO])[0-7]+`)
+	RE_HEX = regexp.MustCompile(`(:?0[xX])[0-9a-fA-F]+`)
+)

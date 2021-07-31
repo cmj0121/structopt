@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -95,6 +96,8 @@ type Option struct {
 	type_hint OptionTypeHint
 	// The type of the option.
 	option_type OptionType
+	// the customized options
+	options map[string]struct{}
 	// The set of the value can be used, may empty.
 	// choices []string
 }
@@ -109,6 +112,14 @@ func NewOption(sfield reflect.StructField, value reflect.Value, log *logger.Log)
 		name:        strings.ToLower(sfield.Name),
 		option_type: Ignore,
 		type_hint:   TYPEHINT_NONE,
+		options:     map[string]struct{}{},
+	}
+
+	if val, ok := option.Lookup(TAG_OPTION); ok {
+		for _, opt := range strings.Split(val, TAG_OPTION_SEP) {
+			// set as key in map
+			option.options[strings.TrimSpace(opt)] = struct{}{}
+		}
 	}
 
 	err = option.setValue(value)
@@ -169,6 +180,34 @@ func (option *Option) Set(value string) (err error) {
 		case TYPEHINT_STR:
 			// set string as value
 			option.Value.SetString(value)
+		case TYPEHINT_INT:
+			var val int64
+			if val, err = option.AtoI(value); err == nil {
+				// set string as Int64
+				option.Value.SetInt(val)
+				// check the value is overflow for the raw field type
+				if _, ok := option.options[TAG_TRUNC]; !ok {
+					// allow data can not allow be truncated
+					if val != option.Value.Int() {
+						err = fmt.Errorf("overflow %v", value)
+						return
+					}
+				}
+			}
+		case TYPEHINT_UINT:
+			var val uint64
+			if val, err = option.AtoU(value); err == nil {
+				// set string as Int64
+				option.Value.SetUint(val)
+				// check the value is overflow for the raw field type
+				if _, ok := option.options[TAG_TRUNC]; !ok {
+					// allow data can not allow be truncated
+					if val != option.Value.Uint() {
+						err = fmt.Errorf("overflow %v", value)
+						return
+					}
+				}
+			}
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
@@ -193,6 +232,63 @@ func (option *Option) TypeHint() (type_hint OptionTypeHint) {
 	type_hint = option.type_hint
 	return
 }
+
+// the strconv.Atoi wrapper for process the hexadecimal or other format
+func (option *Option) AtoI(s string) (val int64, err error) {
+	minus := false
+	if len(s) > 0 && s[0] == '-' {
+		minus = true
+		s = s[1:]
+	}
+
+	switch {
+	case RE_HEX.MatchString(s):
+		if s = s[2:]; minus {
+			s = "-" + s
+		}
+		val, err = strconv.ParseInt(s, 16, 64)
+	case RE_OCT.MatchString(s):
+		if s = s[2:]; minus {
+			s = "-" + s
+		}
+		val, err = strconv.ParseInt(s, 8, 64)
+	case RE_BIN.MatchString(s):
+		if s = s[2:]; minus {
+			s = "-" + s
+		}
+		val, err = strconv.ParseInt(s, 2, 64)
+	case RE_INT.MatchString(s):
+		if minus {
+			s = "-" + s
+		}
+		val, err = strconv.ParseInt(s, 10, 64)
+	default:
+		err = fmt.Errorf("not the sign INT: %v", s)
+		return
+	}
+
+	return
+}
+
+// the strconv.Atoi wrapper for process the hexadecimal or other format
+func (option *Option) AtoU(s string) (val uint64, err error) {
+	switch {
+	case RE_HEX.MatchString(s):
+		val, err = strconv.ParseUint(s[2:], 16, 64)
+	case RE_OCT.MatchString(s):
+		val, err = strconv.ParseUint(s[2:], 8, 64)
+	case RE_BIN.MatchString(s):
+		val, err = strconv.ParseUint(s[2:], 2, 64)
+	case RE_INT.MatchString(s):
+		val, err = strconv.ParseUint(s, 10, 64)
+	default:
+		err = fmt.Errorf("not the sign INT: %v", s)
+		return
+	}
+	return
+}
+
+// The customized StructTag Lookup method, which key can be search if
 
 // set the option type and type hint
 func (option *Option) setValue(value reflect.Value) (err error) {
