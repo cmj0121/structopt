@@ -42,8 +42,6 @@ func New(in interface{}) (opt *StructOpt, err error) {
 		options:       []*Option{},
 		named_options: map[string]*Option{},
 	}
-	opt.Writer(os.Stderr)
-	// opt.Level(logger.TRACE)
 
 	err = opt.prepare()
 	return
@@ -208,21 +206,18 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 
 // Start parse the field of the struct, and raise error if not support field or wrong setting.
 func (opt *StructOpt) prepare() (err error) {
-	value := opt.Value.Elem()
-	typ := value.Type()
+	base_value := opt.Value.Elem()
 
 	// iterate each field in the struct
-	for idx := 0; idx < typ.NumField(); idx++ {
-		field := typ.Field(idx)
-
-		// check the field can set or not
-		v := value.Field(idx)
+	for idx := 0; idx < base_value.Type().NumField(); idx++ {
+		field := base_value.Type().Field(idx)
+		value := base_value.Field(idx)
 		opt.Trace(
 			"#%d field in %v: %-6v (%-8v canset: %v)",
-			idx, typ, field.Name, field.Type, v.CanSet(),
+			idx, base_value.Type(), field.Name, field.Type, value.CanSet(),
 		)
 
-		if !v.CanSet() {
+		if !value.CanSet() {
 			// ignore the field that cannot set
 			opt.Debug("skip the cannot set field: %v", field.Name)
 			continue
@@ -231,30 +226,70 @@ func (opt *StructOpt) prepare() (err error) {
 		// process the field what we need
 		opt.Trace("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
 
-		var option *Option
-		if option, err = NewOption(field, v, opt.Log); err != nil {
-			// invalid option
-			return
+		switch {
+		case field.Type.Kind() == reflect.Struct && field.Anonymous:
+			for f_idx := 0; f_idx < field.Type.NumField(); f_idx++ {
+				sub_field := field.Type.Field(f_idx)
+				sub_value := value.Field(f_idx)
+
+				opt.Trace("#%d sub-field in %v", f_idx, field.Name)
+				if !sub_value.CanSet() {
+					// cannot set the value, skip
+					continue
+				}
+
+				if err = opt.add_option(sub_value, sub_field); err != nil {
+					opt.Warn("set %v as option: %v", sub_value, err)
+					return
+				}
+			}
+		default:
+			if err = opt.add_option(value, field); err != nil {
+				opt.Warn("set %v as option: %v", value, err)
+				return
+			}
 		}
-		// append to the option-list
-		opt.options = append(opt.options, option)
-		// the named option
-		name := option.Name()
+	}
+	return
+}
+
+// add the option to the StructOpt
+func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField) (err error) {
+	// setup the  option
+	option := &Option{
+		Log:       opt.Log,
+		Value:     value,
+		StructTag: sfield.Tag,
+
+		name:        strings.ToLower(sfield.Name),
+		option_type: Ignore,
+		type_hint:   TYPEHINT_NONE,
+		options:     map[string]struct{}{},
+	}
+	if err = option.Prepare(); err != nil {
+		// invalid option
+		return
+	}
+
+	// append to the option-list
+	opt.options = append(opt.options, option)
+	// the named option
+	name := option.Name()
+	if _, ok := opt.named_options[name]; ok {
+		err = fmt.Errorf("duplicated option name: %v", name)
+		return
+	}
+	opt.named_options[name] = option
+	opt.Trace("set %#v as option", name)
+	// the short-name option, if exist
+	if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
+		opt.Trace("set %#v as option", name)
 		if _, ok := opt.named_options[name]; ok {
 			err = fmt.Errorf("duplicated option name: %v", name)
 			return
 		}
 		opt.named_options[name] = option
-		opt.Trace("set %#v as option", name)
-		// the short-name option, if exist
-		if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
-			opt.Trace("set %#v as option", name)
-			if _, ok := opt.named_options[name]; ok {
-				err = fmt.Errorf("duplicated option name: %v", name)
-				return
-			}
-			opt.named_options[name] = option
-		}
 	}
+
 	return
 }

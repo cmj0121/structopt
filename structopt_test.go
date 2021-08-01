@@ -28,6 +28,8 @@ func TestInvalidInput(t *testing.T) {
 }
 
 type Dummy struct {
+	Help
+
 	Flip bool `short:"f" help:"store true/false"`
 
 	Age    uint  `short:"a" name:"âge" help:"The utf-8 field"`
@@ -38,13 +40,13 @@ type Dummy struct {
 	Unicode string  `short:"多" name:"ユニコード" help:"the UTF-8 unicode option"`
 
 	// pre-define type
-	*os.File    `help:"open file, default is Read-Only"`
-	time.Time   `help:"the timestamp of RFC-3339 format"`
-	os.FileMode `help:"oct-based file permission"`
+	*os.File     `help:"open file, default is Read-Only"`
+	*time.Time   `help:"the timestamp of RFC-3339 format"`
+	*os.FileMode `help:"oct-based file permission"`
 
-	IFace  net.Interface `help:"network interface"`
-	CIDR   net.IPNet     `help:"network address with mask, CIDR"`
-	net.IP `help:"the IPv4/IPv6 address"`
+	IFace   *net.Interface `help:"network interface"`
+	CIDR    *net.IPNet     `help:"network address with mask, CIDR"`
+	*net.IP `help:"the IPv4/IPv6 address"`
 }
 
 func TestStructOpt(t *testing.T) {
@@ -122,6 +124,7 @@ func Example() {
 	// usage: foo [OPTION]
 	//
 	// options:
+	//     -h       --help              show this message
 	//     -f       --flip              store true/false
 	//     -a  UINT --âge UINT          The utf-8 field
 	//     -A  INT  --amount INT        the sign integer

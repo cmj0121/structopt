@@ -101,19 +101,8 @@ type Option struct {
 	// choices []string
 }
 
-// Generate the option by the reflect.StructOption, pass from the StructOpt.parse
-func NewOption(sfield reflect.StructField, value reflect.Value, log *logger.Log) (option *Option, err error) {
-	option = &Option{
-		Log:       log,
-		Value:     value,
-		StructTag: sfield.Tag,
-
-		name:        strings.ToLower(sfield.Name),
-		option_type: Ignore,
-		type_hint:   TYPEHINT_NONE,
-		options:     map[string]struct{}{},
-	}
-
+// Prepare the option by the known field
+func (option *Option) Prepare() (err error) {
 	if val, ok := option.Lookup(TAG_OPTION); ok {
 		for _, opt := range strings.Split(val, TAG_OPTION_SEP) {
 			// set as key in map
@@ -121,7 +110,59 @@ func NewOption(sfield reflect.StructField, value reflect.Value, log *logger.Log)
 		}
 	}
 
-	err = option.setValue(value)
+	switch option.Value.Interface().(type) {
+	case *os.File:
+		// the flag / os.File
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_FILE
+	case *os.FileMode:
+		// the flag / os.FileMode
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_FILE_MODE
+	case *time.Time:
+		// the flag / os.File
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_TIME
+	case *net.Interface:
+		// the flag / net.Interface
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_IFACE
+	case *net.IP:
+		// the flag / net.IP
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_IP
+	case *net.IPNet:
+		// the flag / net.IPNet
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_CIDR
+	default:
+		switch typ := option.Value.Type(); typ.Kind() {
+		case reflect.Bool:
+			// the flip
+			option.option_type = Flip
+			option.type_hint = TYPEHINT_NONE
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			// the flag / sign-int
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_INT
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			// the flag / sign-int
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_UINT
+		case reflect.Float32, reflect.Float64:
+			// the flag / sign-rational number
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_RAT
+		case reflect.String:
+			// the flag / string
+			option.option_type = Flag
+			option.type_hint = TYPEHINT_STR
+		default:
+			option.Error("unhandle field type %v", typ)
+			err = fmt.Errorf("unhandle field type %v", typ)
+		}
+	}
+
 	return
 }
 
@@ -235,69 +276,5 @@ func (option *Option) Type() (option_type OptionType) {
 // The type-hint of the option
 func (option *Option) TypeHint() (type_hint OptionTypeHint) {
 	type_hint = option.type_hint
-	return
-}
-
-// The customized StructTag Lookup method, which key can be search if
-
-// set the option type and type hint
-func (option *Option) setValue(value reflect.Value) (err error) {
-	switch value.Interface().(type) {
-	case *os.File:
-		// the flag / os.File
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_FILE
-	case *net.Interface:
-		// the flag / os.File
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_IFACE
-	case os.FileMode:
-		// the flag / os.FileMode
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_FILE_MODE
-	case time.Time:
-		// the flag / os.File
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_TIME
-	case net.Interface:
-		// the flag / net.Interface
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_IFACE
-	case net.IP:
-		// the flag / net.IP
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_IP
-	case net.IPNet:
-		// the flag / net.IPNet
-		option.option_type = Flag
-		option.type_hint = TYPEHINT_CIDR
-	default:
-		switch typ := value.Type(); typ.Kind() {
-		case reflect.Bool:
-			// the flip
-			option.option_type = Flip
-			option.type_hint = TYPEHINT_NONE
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			// the flag / sign-int
-			option.option_type = Flag
-			option.type_hint = TYPEHINT_INT
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			// the flag / sign-int
-			option.option_type = Flag
-			option.type_hint = TYPEHINT_UINT
-		case reflect.Float32, reflect.Float64:
-			// the flag / sign-rational number
-			option.option_type = Flag
-			option.type_hint = TYPEHINT_RAT
-		case reflect.String:
-			// the flag / string
-			option.option_type = Flag
-			option.type_hint = TYPEHINT_STR
-		default:
-			option.Error("unhandle field type %v", typ)
-			err = fmt.Errorf("unhandle field type %v", typ)
-		}
-	}
-
 	return
 }
