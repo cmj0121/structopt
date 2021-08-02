@@ -11,6 +11,9 @@ import (
 	"github.com/cmj0121/logger"
 )
 
+// The callback function which is used when option been set
+type Callback func(option *Option) error
+
 // The enum type of the option
 type OptionType int
 
@@ -88,6 +91,8 @@ type Option struct {
 	reflect.Value
 	// The save field tag
 	reflect.StructTag
+	// The callback function, trigger when set value
+	Callback
 
 	// The raw field name
 	name string
@@ -263,6 +268,11 @@ func (option *Option) Set(value string) (err error) {
 		// not implemented
 		err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.option_type)
 		return
+	}
+
+	if option.Callback != nil {
+		// run the callback
+		err = option.Callback(option)
 	}
 	return
 }

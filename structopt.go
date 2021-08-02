@@ -59,6 +59,13 @@ func MustNew(in interface{}) (opt *StructOpt) {
 	return
 }
 
+// Syntax-sugar for show help message
+func (opt *StructOpt) Help(option *Option) (err error) {
+	opt.Usage(nil)
+	os.Exit(0)
+	return
+}
+
 // Show the usage message in the STDERR
 func (opt *StructOpt) Usage(err error) {
 	// show the message on STDERR
@@ -225,6 +232,7 @@ func (opt *StructOpt) prepare() (err error) {
 
 		// process the field what we need
 		opt.Trace("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
+		var option *Option
 
 		switch {
 		case field.Type.Kind() == reflect.Struct && field.Anonymous:
@@ -238,14 +246,20 @@ func (opt *StructOpt) prepare() (err error) {
 					continue
 				}
 
-				if err = opt.add_option(sub_value, sub_field); err != nil {
-					opt.Warn("set %v as option: %v", sub_value, err)
+				if option, err = opt.add_option(sub_value, sub_field); err != nil {
+					opt.Warn("set %v as option: %v", sub_field.Name, err)
+					return
+				} else if err = opt.add_callback(base_value, option); err != nil {
+					opt.Warn("set %v as option: %v", sub_field.Name, err)
 					return
 				}
 			}
 		default:
-			if err = opt.add_option(value, field); err != nil {
-				opt.Warn("set %v as option: %v", value, err)
+			if option, err = opt.add_option(value, field); err != nil {
+				opt.Warn("set %v as option: %v", field.Name, err)
+				return
+			} else if err = opt.add_callback(base_value, option); err != nil {
+				opt.Warn("set %v as option: %v", field.Name, err)
 				return
 			}
 		}
@@ -254,9 +268,9 @@ func (opt *StructOpt) prepare() (err error) {
 }
 
 // add the option to the StructOpt
-func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField) (err error) {
+func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField) (option *Option, err error) {
 	// setup the  option
-	option := &Option{
+	option = &Option{
 		Log:       opt.Log,
 		Value:     value,
 		StructTag: sfield.Tag,
@@ -289,6 +303,40 @@ func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField
 			return
 		}
 		opt.named_options[name] = option
+	}
+
+	return
+}
+
+func (opt *StructOpt) add_callback(base_value reflect.Value, option *Option) (err error) {
+	if fn_name, ok := option.Lookup(TAG_CALLBACK); ok {
+		// always convert as the Title format
+		fn_name = strings.Title(fn_name)
+		opt.Trace("try add callback: %v", fn_name)
+
+		// search the local callback
+		if fn_value := base_value.MethodByName(fn_name); fn_value.IsValid() && !fn_value.IsZero() {
+			opt.Debug("found possible local callback: %T", fn_value.Interface())
+			// NOTE - using (func(*Option) error) instead of (Callback)
+			if fn, ok := fn_value.Interface().(func(*Option) error); ok {
+				// found the callback
+				option.Callback = fn
+				return
+			}
+		}
+
+		// search the global callback
+		if fn_value := reflect.ValueOf(opt).MethodByName(fn_name); fn_value.IsValid() && !fn_value.IsZero() {
+			opt.Debug("found possible global callback: %T", fn_value.Interface())
+			// NOTE - using (func(*Option) error) instead of (Callback)
+			if fn, ok := fn_value.Interface().(func(*Option) error); ok {
+				// found the callback
+				option.Callback = fn
+				return
+			}
+		}
+
+		err = fmt.Errorf("cannot find the callback: %v", fn_name)
 	}
 
 	return

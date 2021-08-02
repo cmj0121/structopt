@@ -24,9 +24,10 @@ const (
 const (
 	TAG_IGNORE = "-"
 	// reserved key of the field tag
-	TAG_NAME  = "name"
-	TAG_SHORT = "short"
-	TAG_HELP  = "help"
+	TAG_NAME     = "name"
+	TAG_SHORT    = "short"
+	TAG_HELP     = "help"
+	TAG_CALLBACK = "callback"
 
 	// special tag which no-need provide the valie
 	TAG_OPTION     = "option"
