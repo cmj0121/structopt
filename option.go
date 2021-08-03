@@ -287,6 +287,13 @@ func (option *Option) Set(value string) (err error) {
 
 			filemode := os.FileMode(val)
 			option.Value.Set(reflect.ValueOf(&filemode))
+		case TYPEHINT_TIME:
+			var timestamp time.Time
+			if timestamp, err = time.Parse(time.RFC3339, value); err != nil {
+				err = fmt.Errorf("invalid time: %v (%v)", value, err)
+				return
+			}
+			option.Value.Set(reflect.ValueOf(&timestamp))
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)

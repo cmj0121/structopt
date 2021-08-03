@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/cmj0121/structopt"
 )
@@ -20,6 +21,8 @@ type Example struct {
 
 	*os.File     `help:"open file, default is Read-Only"`
 	*os.FileMode `help:"oct-based file permission"`
+
+	*time.Time `help:"the timestamp of RFC-3339 format"`
 }
 
 func (example Example) Ver(option *structopt.Option) (err error) {
@@ -38,6 +41,8 @@ func main() {
 		fmt.Printf("open Read-Only file: %v\n", example.File.Name())
 	case example.FileMode != nil:
 		fmt.Printf("file mode: %v\n", example.FileMode)
+	case example.Time != nil:
+		fmt.Printf("time: %v\n", example.Time)
 	default:
 		fmt.Printf("%#v\n", example)
 	}
