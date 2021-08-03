@@ -38,13 +38,13 @@ const (
 
 // pre-define the INT/UINT format
 var (
-	RE_INT = regexp.MustCompile(`0|[1-9][0-9]*`)
-	RE_BIN = regexp.MustCompile(`(:?0[bB])[01]+`)
-	RE_OCT = regexp.MustCompile(`(:?0[oO])[0-7]+`)
-	RE_HEX = regexp.MustCompile(`(:?0[xX])[0-9a-fA-F]+`)
+	RE_INT = regexp.MustCompile(`^0|[1-9][0-9]*$`)
+	RE_BIN = regexp.MustCompile(`^(:?0[bB])([01]+)$`)
+	RE_OCT = regexp.MustCompile(`^(:?0[oO]?)([0-7]+)$`)
+	RE_HEX = regexp.MustCompile(`^(:?0[xX])([0-9a-fA-F]+)$`)
 
-	RE_FLOAT = regexp.MustCompile(`-?(?:0|[1-9][0-9]*)?\.[0-9]+`)
-	RE_RAT   = regexp.MustCompile(`-?(?:0|[1-9][0-9]*)/-?[1-9][0-9]*`)
+	RE_FLOAT = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)?\.[0-9]+$`)
+	RE_RAT   = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)/-?[1-9][0-9]*$`)
 )
 
 // the strconv.Atoi wrapper for process the hexadecimal or other format
@@ -57,17 +57,17 @@ func AtoI(s string) (val int64, err error) {
 
 	switch {
 	case RE_HEX.MatchString(s):
-		if s = s[2:]; minus {
+		if s = RE_HEX.FindStringSubmatch(s)[2]; minus {
 			s = "-" + s
 		}
 		val, err = strconv.ParseInt(s, 16, 64)
 	case RE_OCT.MatchString(s):
-		if s = s[2:]; minus {
+		if s = RE_OCT.FindStringSubmatch(s)[2]; minus {
 			s = "-" + s
 		}
 		val, err = strconv.ParseInt(s, 8, 64)
 	case RE_BIN.MatchString(s):
-		if s = s[2:]; minus {
+		if s = RE_BIN.FindStringSubmatch(s)[2]; minus {
 			s = "-" + s
 		}
 		val, err = strconv.ParseInt(s, 2, 64)
@@ -88,11 +88,11 @@ func AtoI(s string) (val int64, err error) {
 func AtoU(s string) (val uint64, err error) {
 	switch {
 	case RE_HEX.MatchString(s):
-		val, err = strconv.ParseUint(s[2:], 16, 64)
+		val, err = strconv.ParseUint(RE_HEX.FindStringSubmatch(s)[2], 16, 64)
 	case RE_OCT.MatchString(s):
-		val, err = strconv.ParseUint(s[2:], 8, 64)
+		val, err = strconv.ParseUint(RE_OCT.FindStringSubmatch(s)[2], 8, 64)
 	case RE_BIN.MatchString(s):
-		val, err = strconv.ParseUint(s[2:], 2, 64)
+		val, err = strconv.ParseUint(RE_BIN.FindStringSubmatch(s)[2], 2, 64)
 	case RE_INT.MatchString(s):
 		val, err = strconv.ParseUint(s, 10, 64)
 	default:

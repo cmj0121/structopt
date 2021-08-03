@@ -277,6 +277,16 @@ func (option *Option) Set(value string) (err error) {
 			}
 			option.Value.Set(reflect.ValueOf(fd))
 		case TYPEHINT_FILE_MODE:
+			var val uint64
+
+			val, err = AtoU(value)
+			if err != nil || val >= (1<<32) {
+				err = fmt.Errorf("invalid file-mode: %v (%v)", value, err)
+				return
+			}
+
+			filemode := os.FileMode(val)
+			option.Value.Set(reflect.ValueOf(&filemode))
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
