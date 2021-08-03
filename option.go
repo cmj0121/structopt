@@ -259,6 +259,23 @@ func (option *Option) Set(value string) (err error) {
 				// set string as Float64
 				option.Value.SetFloat(val)
 			}
+		case TYPEHINT_FILE:
+			info, e := os.Stat(value)
+			switch {
+			case os.IsNotExist(e):
+				err = fmt.Errorf("file %#v does not exist", value)
+				return
+			case info.IsDir():
+				err = fmt.Errorf("%#v is not file", value)
+				return
+			}
+
+			fd, e := os.Open(value)
+			if e != nil {
+				err = fmt.Errorf("cannot open file %#v: %v", value, e)
+				return
+			}
+			option.Value.Set(reflect.ValueOf(fd))
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
