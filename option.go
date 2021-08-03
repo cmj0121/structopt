@@ -276,6 +276,7 @@ func (option *Option) Set(value string) (err error) {
 				return
 			}
 			option.Value.Set(reflect.ValueOf(fd))
+		case TYPEHINT_FILE_MODE:
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)

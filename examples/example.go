@@ -18,7 +18,8 @@ type Example struct {
 
 	Price float64 `short:"F" help:"the float or rational number format"`
 
-	*os.File `help:"open file, default is Read-Only"`
+	*os.File     `help:"open file, default is Read-Only"`
+	*os.FileMode `help:"oct-based file permission"`
 }
 
 func (example Example) Ver(option *structopt.Option) (err error) {
@@ -35,7 +36,9 @@ func main() {
 	switch {
 	case example.File != nil:
 		fmt.Printf("open Read-Only file: %v\n", example.File.Name())
+	case example.FileMode != nil:
+		fmt.Printf("file mode: %v\n", example.FileMode)
 	default:
-		fmt.Printf("#%v\n", example)
+		fmt.Printf("%#v\n", example)
 	}
 }
