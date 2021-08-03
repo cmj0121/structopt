@@ -16,7 +16,7 @@ const (
 	PROJ_NAME = "structopt"
 	// the version info
 	MAJOR = 0
-	MINOR = 0
+	MINOR = 1
 	MACRO = 0
 )
 
