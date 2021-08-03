@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -23,6 +24,10 @@ type Example struct {
 	*os.FileMode `help:"oct-based file permission"`
 
 	*time.Time `help:"the timestamp of RFC-3339 format"`
+
+	*net.Interface `help:"network interface"`
+	*net.IPNet     `help:"network address with mask, CIDR"`
+	*net.IP        `help:"the IPv4/IPv6 address"`
 }
 
 func (example Example) Ver(option *structopt.Option) (err error) {
@@ -43,6 +48,12 @@ func main() {
 		fmt.Printf("file mode: %v\n", example.FileMode)
 	case example.Time != nil:
 		fmt.Printf("time: %v\n", example.Time)
+	case example.Interface != nil:
+		fmt.Printf("IFace: %v\n", example.Interface)
+	case example.IPNet != nil:
+		fmt.Printf("IPNet: %v\n", example.IPNet)
+	case example.IP != nil:
+		fmt.Printf("IP: %v\n", example.IP)
 	default:
 		fmt.Printf("%#v\n", example)
 	}

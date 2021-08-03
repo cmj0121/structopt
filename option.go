@@ -294,6 +294,39 @@ func (option *Option) Set(value string) (err error) {
 				return
 			}
 			option.Value.Set(reflect.ValueOf(&timestamp))
+		case TYPEHINT_IFACE:
+			var iface *net.Interface
+			iface, err = net.InterfaceByName(value)
+			if err != nil {
+				err = fmt.Errorf("invalid IFace: %v", value)
+				return
+			}
+			option.Value.Set(reflect.ValueOf(iface))
+		case TYPEHINT_IP:
+			ip := net.ParseIP(value)
+			if ip == nil {
+				// resoved by hostname
+				var ips []net.IP
+
+				ips, err = net.LookupIP(value)
+				if err != nil || len(ips) == 0 {
+					err = fmt.Errorf("invalid IP: %v", value)
+					return
+				}
+				ip = ips[0]
+			}
+
+			option.Value.Set(reflect.ValueOf(&ip))
+		case TYPEHINT_CIDR:
+			var inet *net.IPNet
+
+			// skip the IP field
+			if _, inet, err = net.ParseCIDR(value); err != nil {
+				// err = fmt.Errorf("invalid CIDR: %v (%v)", value, err)
+				return
+			}
+
+			option.Value.Set(reflect.ValueOf(inet))
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
