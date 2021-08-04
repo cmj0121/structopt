@@ -219,6 +219,7 @@ func (opt *StructOpt) prepare() (err error) {
 	for idx := 0; idx < base_value.Type().NumField(); idx++ {
 		field := base_value.Type().Field(idx)
 		value := base_value.Field(idx)
+
 		opt.Trace(
 			"#%d field in %v: %-6v (%-8v canset: %v)",
 			idx, base_value.Type(), field.Name, field.Type, value.CanSet(),
@@ -282,6 +283,12 @@ func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField
 	}
 	if err = option.Prepare(); err != nil {
 		// invalid option
+		return
+	}
+
+	if strings.TrimSpace(string(sfield.Tag)) == TAG_IGNORE {
+		// parse the field but skip
+		opt.Info("skip the option: %v", option.Name())
 		return
 	}
 

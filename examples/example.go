@@ -12,6 +12,9 @@ import (
 type Example struct {
 	structopt.Help
 
+	Skip  bool `-`
+	Skip2 bool ` - `
+
 	Version bool `short:"v" callback:"ver" help:"show version info"`
 
 	Flip bool   `short:"f" help:"flip the variable"`
