@@ -28,7 +28,8 @@ type Example struct {
 	*os.File     `help:"open file, default is Read-Only"`
 	*os.FileMode `help:"oct-based file permission"`
 
-	*time.Time `help:"the timestamp of RFC-3339 format"`
+	*time.Time     `help:"the timestamp of RFC-3339 format"`
+	*time.Duration `help:"the human-readable time span"`
 
 	*net.Interface `help:"network interface"`
 	*net.IPNet     `help:"network address with mask, CIDR"`
@@ -53,6 +54,8 @@ func main() {
 		fmt.Printf("file mode: %v\n", example.FileMode)
 	case example.Time != nil:
 		fmt.Printf("time: %v\n", example.Time)
+	case example.Duration != nil:
+		fmt.Printf("duration: %v\n", example.Duration)
 	case example.Interface != nil:
 		fmt.Printf("IFace: %v\n", example.Interface)
 	case example.IPNet != nil:

@@ -40,9 +40,10 @@ type Dummy struct {
 	Unicode string  `short:"多" name:"ユニコード" help:"the UTF-8 unicode option"`
 
 	// pre-define type
-	*os.File     `help:"open file, default is Read-Only"`
-	*time.Time   `help:"the timestamp of RFC-3339 format"`
-	*os.FileMode `help:"oct-based file permission"`
+	*os.File       `help:"open file, default is Read-Only"`
+	*time.Time     `help:"the timestamp of RFC-3339 format"`
+	*time.Duration `help:"the human-readable time duration"`
+	*os.FileMode   `help:"oct-based file permission"`
 
 	IFace   *net.Interface `help:"network interface"`
 	CIDR    *net.IPNet     `help:"network address with mask, CIDR"`
@@ -112,6 +113,14 @@ func TestStructOpt(t *testing.T) {
 	if err := parse.Parse("--price", "-5/4"); err != nil || dummy.Price != -1.25 {
 		t.Fatalf("expect RAT is workable: %v (%v)", dummy.Price, err)
 	}
+
+	if err := parse.Parse("--time", "1989-06-04T00:11:22Z"); err != nil {
+		t.Fatalf("expect TIME is workable: %v (%v)", dummy.Time, err)
+	}
+
+	if err := parse.Parse("--duration", "100ms"); err != nil || *dummy.Duration != time.Millisecond*100 {
+		t.Fatalf("expect SPAN is workable: %v (%v)", dummy.Duration, err)
+	}
 }
 
 func Example() {
@@ -133,6 +142,7 @@ func Example() {
 	//      -多 STR --ユニコード STR    the UTF-8 unicode option
 	//              --file FILE         open file, default is Read-Only
 	//              --time TIME         the timestamp of RFC-3339 format
+	//              --duration SPAN     the human-readable time duration
 	//              --filemode FMODE    oct-based file permission
 	//              --iface IFACE       network interface
 	//              --cidr CIDR         network address with mask, CIDR

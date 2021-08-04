@@ -48,6 +48,8 @@ const (
 	TYPEHINT_FILE_MODE
 	// the RFC-3389 format timestamp
 	TYPEHINT_TIME
+	// the time duration string
+	TYPEHINT_TIME_DURATION
 	// the network interface
 	TYPEHINT_IFACE
 	// the network IPv4 / IPv6 address
@@ -73,6 +75,8 @@ func (hint OptionTypeHint) String() (str string) {
 		str = "FMODE"
 	case TYPEHINT_TIME:
 		str = "TIME"
+	case TYPEHINT_TIME_DURATION:
+		str = "SPAN"
 	case TYPEHINT_IFACE:
 		str = "IFACE"
 	case TYPEHINT_IP:
@@ -128,6 +132,10 @@ func (option *Option) Prepare() (err error) {
 		// the flag / os.File
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_TIME
+	case *time.Duration:
+		// the flag / os.File
+		option.option_type = Flag
+		option.type_hint = TYPEHINT_TIME_DURATION
 	case *net.Interface:
 		// the flag / net.Interface
 		option.option_type = Flag
@@ -295,6 +303,14 @@ func (option *Option) Set(value string) (err error) {
 				return
 			}
 			option.Value.Set(reflect.ValueOf(&timestamp))
+		case TYPEHINT_TIME_DURATION:
+			var duration time.Duration
+
+			if duration, err = time.ParseDuration(value); err != nil {
+				err = fmt.Errorf("invalid time duration: %v (%v)", value, err)
+				return
+			}
+			option.Value.Set(reflect.ValueOf(&duration))
 		case TYPEHINT_IFACE:
 			var iface *net.Interface
 			iface, err = net.InterfaceByName(value)
