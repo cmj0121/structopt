@@ -6,14 +6,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/cmj0121/logger"
 	"github.com/cmj0121/structopt"
 )
 
 type Example struct {
 	structopt.Help
 
-	Skip  bool `-`
-	Skip2 bool ` - `
+	Skip        bool `-`
+	Skip2       bool ` - `
+	*logger.Log `-`
 
 	Version bool `short:"v" callback:"ver" help:"show version info"`
 

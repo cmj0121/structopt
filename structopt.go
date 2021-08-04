@@ -281,14 +281,15 @@ func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField
 		type_hint:   TYPEHINT_NONE,
 		options:     map[string]struct{}{},
 	}
-	if err = option.Prepare(); err != nil {
-		// invalid option
-		return
-	}
 
 	if strings.TrimSpace(string(sfield.Tag)) == TAG_IGNORE {
 		// parse the field but skip
 		opt.Info("skip the option: %v", option.Name())
+		return
+	}
+
+	if err = option.Prepare(); err != nil {
+		// invalid option
 		return
 	}
 
