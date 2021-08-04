@@ -26,4 +26,4 @@ lint:
 	go test -cover -failfast -timeout 2s
 
 %: %.go
-	go build -o $@ $<
+	go build -ldflags="-s -w" -o $@ $<
