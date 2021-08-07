@@ -24,6 +24,8 @@ const (
 	Flip
 	// The value store and will auto-convert to fit type.
 	Flag
+	// The argument
+	Argument
 	// The extension of option which recursive process the pass arguments.
 	Subcommand
 )
@@ -119,32 +121,60 @@ func (option *Option) Prepare() (err error) {
 		}
 	}
 
-	switch option.Value.Interface().(type) {
-	case *os.File:
+	switch option.Value.Kind() {
+	case reflect.Bool:
+		// should be flip
+		option.option_type = Flip
+		option.type_hint = TYPEHINT_NONE
+	case reflect.Ptr:
+		// create the dummy value
+		value := reflect.New(option.Value.Type().Elem()).Elem()
+
+		// force to be option?
+		if _, ok := option.options[TAG_FLAG]; ok {
+			// force set as flag
+			option.option_type = Flag
+			err = option.prepare(value)
+			return
+		}
+
+		// maybe the argument or sub-command
+		err = fmt.Errorf("not implemented: %v", option.Value.Type())
+		return
+	default:
+		// should be flag
+		err = option.prepare(option.Value)
+	}
+	return
+}
+
+func (option *Option) prepare(value reflect.Value) (err error) {
+	switch value.Interface().(type) {
+	case os.File:
 		// the flag / os.File
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_FILE
-	case *os.FileMode:
+	case os.FileMode:
 		// the flag / os.FileMode
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_FILE_MODE
-	case *time.Time:
+	case time.Time:
 		// the flag / os.File
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_TIME
-	case *time.Duration:
+	case time.Duration:
 		// the flag / os.File
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_TIME_DURATION
-	case *net.Interface:
+	case net.Interface:
 		// the flag / net.Interface
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_IFACE
-	case *net.IP:
+	case net.IP:
 		// the flag / net.IP
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_IP
-	case *net.IPNet:
+	case net.IPNet:
 		// the flag / net.IPNet
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_CIDR
@@ -171,8 +201,8 @@ func (option *Option) Prepare() (err error) {
 			option.option_type = Flag
 			option.type_hint = TYPEHINT_STR
 		default:
-			option.Error("unhandle field type %v", typ)
-			err = fmt.Errorf("unhandle field type %v", typ)
+			err = fmt.Errorf("prepare: unhandle field type %v (%T)", typ, value.Interface())
+			return
 		}
 	}
 
@@ -284,7 +314,7 @@ func (option *Option) Set(value string) (err error) {
 				err = fmt.Errorf("cannot open file %#v: %v", value, e)
 				return
 			}
-			option.Value.Set(reflect.ValueOf(fd))
+			err = option.set(reflect.ValueOf(fd))
 		case TYPEHINT_FILE_MODE:
 			var val uint64
 
@@ -295,14 +325,14 @@ func (option *Option) Set(value string) (err error) {
 			}
 
 			filemode := os.FileMode(val)
-			option.Value.Set(reflect.ValueOf(&filemode))
+			err = option.set(reflect.ValueOf(&filemode))
 		case TYPEHINT_TIME:
 			var timestamp time.Time
 			if timestamp, err = time.Parse(time.RFC3339, value); err != nil {
 				err = fmt.Errorf("invalid time: %v (%v)", value, err)
 				return
 			}
-			option.Value.Set(reflect.ValueOf(&timestamp))
+			err = option.set(reflect.ValueOf(&timestamp))
 		case TYPEHINT_TIME_DURATION:
 			var duration time.Duration
 
@@ -310,7 +340,7 @@ func (option *Option) Set(value string) (err error) {
 				err = fmt.Errorf("invalid time duration: %v (%v)", value, err)
 				return
 			}
-			option.Value.Set(reflect.ValueOf(&duration))
+			err = option.set(reflect.ValueOf(&duration))
 		case TYPEHINT_IFACE:
 			var iface *net.Interface
 			iface, err = net.InterfaceByName(value)
@@ -318,7 +348,7 @@ func (option *Option) Set(value string) (err error) {
 				err = fmt.Errorf("invalid IFace: %v", value)
 				return
 			}
-			option.Value.Set(reflect.ValueOf(iface))
+			err = option.set(reflect.ValueOf(iface))
 		case TYPEHINT_IP:
 			ip := net.ParseIP(value)
 			if ip == nil {
@@ -333,7 +363,7 @@ func (option *Option) Set(value string) (err error) {
 				ip = ips[0]
 			}
 
-			option.Value.Set(reflect.ValueOf(&ip))
+			err = option.set(reflect.ValueOf(&ip))
 		case TYPEHINT_CIDR:
 			var inet *net.IPNet
 
@@ -342,8 +372,7 @@ func (option *Option) Set(value string) (err error) {
 				// err = fmt.Errorf("invalid CIDR: %v (%v)", value, err)
 				return
 			}
-
-			option.Value.Set(reflect.ValueOf(inet))
+			err = option.set(reflect.ValueOf(inet))
 		default:
 			// not implemented
 			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
@@ -358,6 +387,21 @@ func (option *Option) Set(value string) (err error) {
 	if option.Callback != nil {
 		// run the callback
 		err = option.Callback(option)
+	}
+	return
+}
+
+// the exactly set the value to the option. In the idea case the value should pass
+// the reflect.Ptr and the option.set handle the both Ptr and non-Ptr cases.
+func (option *Option) set(value reflect.Value) (err error) {
+	switch {
+	case option.Value.Kind() == reflect.Ptr && option.Value.Type() == value.Type():
+		option.Value.Set(value)
+	case option.Value.Type() == value.Elem().Type():
+		option.Value.Set(value.Elem())
+	default:
+		err = fmt.Errorf("cannot set %v to %v", value.Type(), option.Value.Type())
+		return
 	}
 	return
 }
