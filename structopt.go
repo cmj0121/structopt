@@ -22,6 +22,7 @@ type StructOpt struct {
 	*logger.Log
 
 	options       []*Option
+	arg_cmd_opts  []*Option
 	named_options map[string]*Option
 }
 
@@ -94,12 +95,26 @@ func (opt *StructOpt) WriteUsage(writer io.Writer, err error) {
 		usage_bar = fmt.Sprintf("%v [OPTION]", usage_bar)
 	}
 
+	for _, arg := range opt.arg_cmd_opts {
+		// add the ARGUMENT / SUB-COMMAND
+		usage_bar = fmt.Sprintf("%v %v", usage_bar, strings.ToUpper(arg.Name()))
+	}
+
 	show_message(writer, usage_bar)
 	if len(opt.options) > 0 {
 		show_message(writer, "")
 		show_message(writer, "options:")
 		for _, option := range opt.options {
 			show_message(writer, "%v", option)
+		}
+	}
+
+	if len(opt.arg_cmd_opts) > 0 {
+		show_message(writer, "")
+		show_message(writer, "arguments:")
+
+		for _, arg := range opt.arg_cmd_opts {
+			show_message(writer, "%v", arg)
 		}
 	}
 }
@@ -119,7 +134,7 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 	disable_short_option := false
 	disable_option := false
 
-	idx := 0
+	idx, arg_idx := 0, 0
 
 	// the inner functin, which may increate the argument and auto-increate
 	// index, or return error
@@ -202,7 +217,18 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 			}
 		default:
 			// argument
+			if arg_idx >= len(opt.arg_cmd_opts) {
+				// too-many argument
+				err = fmt.Errorf("too many argument: %v", arg)
+				return
+			}
+
+			if err = opt.arg_cmd_opts[arg_idx].Set(arg); err != nil {
+				// cannot set args
+				return
+			}
 			opt.Info("#%v argument %#v", idx, arg)
+			arg_idx++
 		}
 
 		idx++
@@ -293,24 +319,31 @@ func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField
 		return
 	}
 
-	// append to the option-list
-	opt.options = append(opt.options, option)
-	// the named option
-	name := option.Name()
-	if _, ok := opt.named_options[name]; ok {
-		err = fmt.Errorf("duplicated option name: %v", name)
-		return
-	}
-	opt.named_options[name] = option
-	opt.Trace("set %#v as option", name)
-	// the short-name option, if exist
-	if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
-		opt.Trace("set %#v as option", name)
+	switch option.Type() {
+	case Flip, Flag:
+		// append to the option-list
+		opt.options = append(opt.options, option)
+		// the named option
+		name := option.Name()
 		if _, ok := opt.named_options[name]; ok {
 			err = fmt.Errorf("duplicated option name: %v", name)
 			return
 		}
 		opt.named_options[name] = option
+		opt.Trace("set %#v as %v", name, option.Type())
+
+		// the short-name option, if exist
+		if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
+			opt.Trace("set %#v as option", name)
+			if _, ok := opt.named_options[name]; ok {
+				err = fmt.Errorf("duplicated option name: %v", name)
+				return
+			}
+			opt.named_options[name] = option
+		}
+	default:
+		// append to the option-list
+		opt.arg_cmd_opts = append(opt.arg_cmd_opts, option)
 	}
 
 	return

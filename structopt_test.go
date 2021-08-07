@@ -48,6 +48,8 @@ type Dummy struct {
 	IFace   *net.Interface `option:"flag" help:"network interface"`
 	CIDR    *net.IPNet     `option:"flag" help:"network address with mask, CIDR"`
 	*net.IP `option:"flag" help:"the IPv4/IPv6 address"`
+
+	ArgStr *string `help:"The string argument"`
 }
 
 func TestStructOpt(t *testing.T) {
@@ -130,7 +132,7 @@ func Example() {
 
 	parser.WriteUsage(os.Stdout, nil)
 	// Output:
-	// usage: foo [OPTION]
+	// usage: foo [OPTION] ARGSTR
 	//
 	// options:
 	//           -h --help              show this message
@@ -147,4 +149,7 @@ func Example() {
 	//              --iface IFACE       network interface
 	//              --cidr CIDR         network address with mask, CIDR
 	//              --ip IP             the IPv4/IPv6 address
+	//
+	// arguments:
+	//     ARGSTR (STR)       The string argument
 }

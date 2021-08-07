@@ -34,7 +34,9 @@ type Example struct {
 
 	*net.Interface `option:"flag" help:"network interface"`
 	*net.IPNet     `option:"flag" help:"network address with mask, CIDR"`
-	net.IP         `option:"flag" help:"the IPv4/IPv6 address"`
+	*net.IP        `option:"flag" help:"the IPv4/IPv6 address"`
+
+	Arg *string `help:"example argument"`
 }
 
 func (example Example) Ver(option *structopt.Option) (err error) {
@@ -63,6 +65,8 @@ func main() {
 		fmt.Printf("IPNet: %v\n", example.IPNet)
 	case example.IP != nil:
 		fmt.Printf("IP: %v\n", example.IP)
+	case example.Arg != nil:
+		fmt.Printf("Arg: %v\n", *example.Arg)
 	default:
 		fmt.Printf("%#v\n", example)
 	}

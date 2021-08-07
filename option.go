@@ -127,8 +127,9 @@ func (option *Option) Prepare() (err error) {
 		option.option_type = Flip
 		option.type_hint = TYPEHINT_NONE
 	case reflect.Ptr:
+		typ := option.Value.Type().Elem()
 		// create the dummy value
-		value := reflect.New(option.Value.Type().Elem()).Elem()
+		value := reflect.New(typ).Elem()
 
 		// force to be option?
 		if _, ok := option.options[TAG_FLAG]; ok {
@@ -139,8 +140,16 @@ func (option *Option) Prepare() (err error) {
 		}
 
 		// maybe the argument or sub-command
-		err = fmt.Errorf("not implemented: %v", option.Value.Type())
-		return
+		switch typ.Kind() {
+		case reflect.Struct:
+			err = fmt.Errorf("not implemented: %v (%T)", typ, value.Interface())
+			option.option_type = Subcommand
+			return
+		default:
+			err = option.prepare(value)
+			option.option_type = Argument
+			return
+		}
 	default:
 		// should be flag
 		err = option.prepare(option.Value)
@@ -179,7 +188,7 @@ func (option *Option) prepare(value reflect.Value) (err error) {
 		option.option_type = Flag
 		option.type_hint = TYPEHINT_CIDR
 	default:
-		switch typ := option.Value.Type(); typ.Kind() {
+		switch value.Kind() {
 		case reflect.Bool:
 			// the flip
 			option.option_type = Flip
@@ -201,7 +210,7 @@ func (option *Option) prepare(value reflect.Value) (err error) {
 			option.option_type = Flag
 			option.type_hint = TYPEHINT_STR
 		default:
-			err = fmt.Errorf("prepare: unhandle field type %v (%T)", typ, value.Interface())
+			err = fmt.Errorf("prepare: unhandle field type %v (%T)", value.Kind(), value.Interface())
 			return
 		}
 	}
@@ -213,20 +222,28 @@ func (option *Option) prepare(value reflect.Value) (err error) {
 func (option *Option) String() (str string) {
 	// show as the formatted option which has three parts: margin, option and help
 	help, _ := option.Lookup(TAG_HELP)
-
+	flag := ""
+	flag_width := 28
 	type_hint := option.type_hint.String()
-	short_name, _ := option.Lookup(TAG_SHORT)
-	if len(short_name) > 0 {
-		// add the leading -
-		short_name_offset := WidecharSize(short_name) - len([]rune(short_name))
-		short_name = fmt.Sprintf("-%-*v %v", 2-short_name_offset, short_name, type_hint)
-		short_name = strings.TrimSpace(short_name)
+
+	switch option.Type() {
+	case Flip, Flag:
+		short_name, _ := option.Lookup(TAG_SHORT)
+		if len(short_name) > 0 {
+			// add the leading -
+			short_name_offset := WidecharSize(short_name) - len([]rune(short_name))
+			short_name = fmt.Sprintf("-%-*v %v", 2-short_name_offset, short_name, type_hint)
+			short_name = strings.TrimSpace(short_name)
+		}
+		short_width_offset := WidecharSize(short_name) - len([]rune(short_name))
+		flag = fmt.Sprintf("%*v --%v %v", 8-short_width_offset, short_name, option.Name(), type_hint)
+	default:
+		flag = fmt.Sprintf("%v (%v)", strings.ToUpper(option.Name()), type_hint)
+		flag_width = 18
 	}
-	short_width_offset := WidecharSize(short_name) - len([]rune(short_name))
-	flag := fmt.Sprintf("%*v --%v %v", 8-short_width_offset, short_name, option.Name(), type_hint)
 
 	flag_width_offset := WidecharSize(flag) - len([]rune(flag))
-	str = fmt.Sprintf("    %-*v %v", 28-flag_width_offset, flag, help)
+	str = fmt.Sprintf("    %-*v %v", flag_width-flag_width_offset, flag, help)
 	str = strings.TrimRight(str, " ")
 	return
 }
@@ -259,11 +276,11 @@ func (option *Option) Set(value string) (err error) {
 
 		option.Trace("flip to %v", !option.Value.Bool())
 		option.Value.SetBool(!option.Value.Bool())
-	case Flag:
+	case Flag, Argument:
 		switch option.type_hint {
 		case TYPEHINT_STR:
 			// set string as value
-			option.Value.SetString(value)
+			err = option.set(reflect.ValueOf(&value))
 		case TYPEHINT_INT:
 			var val int64
 			if val, err = AtoI(value); err == nil {
@@ -281,7 +298,7 @@ func (option *Option) Set(value string) (err error) {
 		case TYPEHINT_UINT:
 			var val uint64
 			if val, err = AtoU(value); err == nil {
-				// set string as Int64
+				// set string as Uint64
 				option.Value.SetUint(val)
 				// check the value is overflow for the raw field type
 				if _, ok := option.options[TAG_TRUNC]; !ok {
