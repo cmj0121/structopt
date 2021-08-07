@@ -258,9 +258,9 @@ func (option *Option) Name() (name string) {
 }
 
 // Set the field from the pass value
-func (option *Option) Set(value string) (err error) {
+func (option *Option) Set(args ...string) (count int, err error) {
 	if !option.Value.CanSet() {
-		err = fmt.Errorf("%v cannot set", value)
+		err = fmt.Errorf("%v cannot set", option.Value)
 		return
 	}
 
@@ -268,133 +268,19 @@ func (option *Option) Set(value string) (err error) {
 	case Ignore:
 		// need not operation and should not be called
 		err = fmt.Errorf("OPTION %v (%v) should not call Set", option.Name(), option.type_hint)
-	case Flip:
-		if value != "" {
-			err = fmt.Errorf("set FLIP should not pass any value")
-			return
+	case Flip, Flag, Argument:
+		value := option.Value
+
+		for value.Kind() == reflect.Ptr {
+			if value.IsZero() {
+				option.Debug("%v is zero, create dummy", value.Type())
+				value.Set(reflect.New(value.Type().Elem()))
+			}
+
+			value = value.Elem()
 		}
 
-		option.Trace("flip to %v", !option.Value.Bool())
-		option.Value.SetBool(!option.Value.Bool())
-	case Flag, Argument:
-		switch option.type_hint {
-		case TYPEHINT_STR:
-			// set string as value
-			err = option.set(reflect.ValueOf(&value))
-		case TYPEHINT_INT:
-			var val int64
-			if val, err = AtoI(value); err == nil {
-				// set string as Int64
-				option.Value.SetInt(val)
-				// check the value is overflow for the raw field type
-				if _, ok := option.options[TAG_TRUNC]; !ok {
-					// allow data can not allow be truncated
-					if val != option.Value.Int() {
-						err = fmt.Errorf("overflow %v", value)
-						return
-					}
-				}
-			}
-		case TYPEHINT_UINT:
-			var val uint64
-			if val, err = AtoU(value); err == nil {
-				// set string as Uint64
-				option.Value.SetUint(val)
-				// check the value is overflow for the raw field type
-				if _, ok := option.options[TAG_TRUNC]; !ok {
-					// allow data can not allow be truncated
-					if val != option.Value.Uint() {
-						err = fmt.Errorf("overflow %v", value)
-						return
-					}
-				}
-			}
-		case TYPEHINT_RAT:
-			var val float64
-			if val, err = AtoF(value); err == nil {
-				// set string as Float64
-				option.Value.SetFloat(val)
-			}
-		case TYPEHINT_FILE:
-			info, e := os.Stat(value)
-			switch {
-			case os.IsNotExist(e):
-				err = fmt.Errorf("file %#v does not exist", value)
-				return
-			case info.IsDir():
-				err = fmt.Errorf("%#v is not file", value)
-				return
-			}
-
-			fd, e := os.Open(value)
-			if e != nil {
-				err = fmt.Errorf("cannot open file %#v: %v", value, e)
-				return
-			}
-			err = option.set(reflect.ValueOf(fd))
-		case TYPEHINT_FILE_MODE:
-			var val uint64
-
-			val, err = AtoU(value)
-			if err != nil || val >= (1<<32) {
-				err = fmt.Errorf("invalid file-mode: %v (%v)", value, err)
-				return
-			}
-
-			filemode := os.FileMode(val)
-			err = option.set(reflect.ValueOf(&filemode))
-		case TYPEHINT_TIME:
-			var timestamp time.Time
-			if timestamp, err = time.Parse(time.RFC3339, value); err != nil {
-				err = fmt.Errorf("invalid time: %v (%v)", value, err)
-				return
-			}
-			err = option.set(reflect.ValueOf(&timestamp))
-		case TYPEHINT_TIME_DURATION:
-			var duration time.Duration
-
-			if duration, err = time.ParseDuration(value); err != nil {
-				err = fmt.Errorf("invalid time duration: %v (%v)", value, err)
-				return
-			}
-			err = option.set(reflect.ValueOf(&duration))
-		case TYPEHINT_IFACE:
-			var iface *net.Interface
-			iface, err = net.InterfaceByName(value)
-			if err != nil {
-				err = fmt.Errorf("invalid IFace: %v", value)
-				return
-			}
-			err = option.set(reflect.ValueOf(iface))
-		case TYPEHINT_IP:
-			ip := net.ParseIP(value)
-			if ip == nil {
-				// resoved by hostname
-				var ips []net.IP
-
-				ips, err = net.LookupIP(value)
-				if err != nil || len(ips) == 0 {
-					err = fmt.Errorf("invalid IP: %v", value)
-					return
-				}
-				ip = ips[0]
-			}
-
-			err = option.set(reflect.ValueOf(&ip))
-		case TYPEHINT_CIDR:
-			var inet *net.IPNet
-
-			// skip the IP field
-			if _, inet, err = net.ParseCIDR(value); err != nil {
-				// err = fmt.Errorf("invalid CIDR: %v (%v)", value, err)
-				return
-			}
-			err = option.set(reflect.ValueOf(inet))
-		default:
-			// not implemented
-			err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
-			return
-		}
+		count, err = option.set(value, args...)
 	default:
 		// not implemented
 		err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.option_type)
@@ -409,15 +295,147 @@ func (option *Option) Set(value string) (err error) {
 }
 
 // the exactly set the value to the option. In the idea case the value should pass
-// the reflect.Ptr and the option.set handle the both Ptr and non-Ptr cases.
-func (option *Option) set(value reflect.Value) (err error) {
-	switch {
-	case option.Value.Kind() == reflect.Ptr && option.Value.Type() == value.Type():
-		option.Value.Set(value)
-	case option.Value.Type() == value.Elem().Type():
-		option.Value.Set(value.Elem())
+// the reflect.Ptr and the option.set handle the arbitrary number of pointer
+func (option *Option) set(value reflect.Value, args ...string) (count int, err error) {
+	if option.TypeHint() == TYPEHINT_NONE {
+		option.Trace("flip to %v", !value.Bool())
+		value.SetBool(!value.Bool())
+		return
+	}
+
+	if len(args) == 0 {
+		err = fmt.Errorf("should pass %v", option.TypeHint())
+		return
+	}
+
+	count = 1
+	arg := args[0]
+	switch option.TypeHint() {
+	case TYPEHINT_STR:
+		// set string as value
+		value.Set(reflect.ValueOf(arg))
+	case TYPEHINT_INT:
+		var val int64
+		if val, err = AtoI(arg); err != nil {
+			// cannot encode as int64
+			return
+		}
+		// set string as Int64
+		value.SetInt(val)
+
+		// check the value is overflow for the raw field type
+		if _, ok := option.options[TAG_TRUNC]; !ok {
+			// allow data can not allow be truncated
+			if val != value.Int() {
+				err = fmt.Errorf("overflow %v", arg)
+				return
+			}
+		}
+	case TYPEHINT_UINT:
+		var val uint64
+		if val, err = AtoU(arg); err != nil {
+			// cannot encode as uint64
+			return
+		}
+		// set string as Uint64
+		value.SetUint(val)
+
+		// check the value is overflow for the raw field type
+		if _, ok := option.options[TAG_TRUNC]; !ok {
+			// allow data can not allow be truncated
+			if val != option.Value.Uint() {
+				err = fmt.Errorf("overflow %v", arg)
+				return
+			}
+		}
+	case TYPEHINT_RAT:
+		var val float64
+		if val, err = AtoF(arg); err != nil {
+			// cannot encode as float
+			return
+		}
+
+		// set string as Float64
+		value.SetFloat(val)
+	case TYPEHINT_FILE:
+		info, e := os.Stat(arg)
+		switch {
+		case os.IsNotExist(e):
+			err = fmt.Errorf("file %#v does not exist", value)
+			return
+		case info.IsDir():
+			err = fmt.Errorf("%#v is not file", value)
+			return
+		}
+
+		fd, e := os.Open(arg)
+		if e != nil {
+			err = fmt.Errorf("cannot open file %#v: %v", value, e)
+			return
+		}
+
+		value.Set(reflect.ValueOf(*fd))
+	case TYPEHINT_FILE_MODE:
+		var val uint64
+
+		val, err = AtoU(arg)
+		if err != nil || val >= (1<<32) {
+			err = fmt.Errorf("invalid file-mode: %v (%v)", value, err)
+			return
+		}
+
+		filemode := os.FileMode(val)
+		value.Set(reflect.ValueOf(filemode))
+	case TYPEHINT_TIME:
+		var timestamp time.Time
+		if timestamp, err = time.Parse(time.RFC3339, arg); err != nil {
+			err = fmt.Errorf("invalid time: %v (%v)", arg, err)
+			return
+		}
+		value.Set(reflect.ValueOf(timestamp))
+	case TYPEHINT_TIME_DURATION:
+		var duration time.Duration
+
+		if duration, err = time.ParseDuration(arg); err != nil {
+			err = fmt.Errorf("invalid time duration: %v (%v)", arg, err)
+			return
+		}
+		value.Set(reflect.ValueOf(duration))
+	case TYPEHINT_IFACE:
+		var iface *net.Interface
+		iface, err = net.InterfaceByName(arg)
+		if err != nil {
+			err = fmt.Errorf("invalid IFace: %v", arg)
+			return
+		}
+		value.Set(reflect.ValueOf(*iface))
+	case TYPEHINT_IP:
+		ip := net.ParseIP(arg)
+		if ip == nil {
+			// resoved by hostname
+			var ips []net.IP
+
+			ips, err = net.LookupIP(arg)
+			if err != nil || len(ips) == 0 {
+				err = fmt.Errorf("invalid IP: %v", arg)
+				return
+			}
+			ip = ips[0]
+		}
+
+		value.Set(reflect.ValueOf(ip))
+	case TYPEHINT_CIDR:
+		var inet *net.IPNet
+
+		// skip the IP field
+		if _, inet, err = net.ParseCIDR(arg); err != nil {
+			// err = fmt.Errorf("invalid CIDR: %v (%v)", value, err)
+			return
+		}
+		value.Set(reflect.ValueOf(*inet))
 	default:
-		err = fmt.Errorf("cannot set %v to %v", value.Type(), option.Value.Type())
+		// not implemented
+		err = fmt.Errorf("OPTION %v (%v) not implemented Set", option.Name(), option.type_hint)
 		return
 	}
 	return

@@ -123,10 +123,16 @@ func AtoF(s string) (val float64, err error) {
 
 		rat := big.NewRat(num, denom)
 		val, _ = rat.Float64()
-
 	default:
-		err = fmt.Errorf("not the RAT: %v", s)
-		return
+		// check is the simple sign int
+		var sign_val int64
+
+		if sign_val, err = AtoI(s); err != nil {
+			err = fmt.Errorf("not the RAT: %v", s)
+			return
+		}
+
+		val = float64(sign_val)
 	}
 
 	return

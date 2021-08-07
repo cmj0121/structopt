@@ -36,7 +36,7 @@ type Example struct {
 	*net.IPNet     `option:"flag" help:"network address with mask, CIDR"`
 	*net.IP        `option:"flag" help:"the IPv4/IPv6 address"`
 
-	Arg *string `help:"example argument"`
+	Arg *float64 `help:"example argument"`
 }
 
 func (example Example) Ver(option *structopt.Option) (err error) {
