@@ -301,7 +301,7 @@ func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField
 
 		name:        strings.ToLower(sfield.Name),
 		option_type: Ignore,
-		type_hint:   TYPEHINT_NONE,
+		type_hint:   NONE,
 		options:     map[string]struct{}{},
 	}
 

@@ -137,9 +137,9 @@ func Example() {
 	// options:
 	//           -h --help              show this message
 	//           -f --flip              store true/false
-	//     -a  UINT --âge UINT          The utf-8 field
-	//      -A  INT --amount INT        the sign integer
-	//      -b  INT --base INT          check base
+	//      -a UINT --âge UINT          The utf-8 field
+	//       -A INT --amount INT        the sign integer
+	//       -b INT --base INT          check base
 	//              --price RAT         the sign float number
 	//      -多 STR --ユニコード STR    the UTF-8 unicode option
 	//              --file FILE         open file, default is Read-Only

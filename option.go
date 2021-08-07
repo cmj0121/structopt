@@ -15,6 +15,7 @@ import (
 type Callback func(option *Option) error
 
 // The enum type of the option
+//go:generate stringer -type=OptionType
 type OptionType int
 
 const (
@@ -31,63 +32,35 @@ const (
 )
 
 // The type-hint of the option
+//go:generate stringer -type=OptionTypeHint
 type OptionTypeHint int
 
 const (
 	// no-need to provide the type hint
-	TYPEHINT_NONE OptionTypeHint = iota
+	NONE OptionTypeHint = iota
 	// the sign integer, can be save as int64
-	TYPEHINT_INT
+	INT
 	// the sign integer, can be save as uint64
-	TYPEHINT_UINT
+	UINT
 	// the sign rantional number
-	TYPEHINT_RAT
+	RAT
 	// the string value
-	TYPEHINT_STR
+	STR
 	// the file-path, an will be auto-open
-	TYPEHINT_FILE
+	FILE
 	// the file-permission
-	TYPEHINT_FILE_MODE
+	FMODE
 	// the RFC-3389 format timestamp
-	TYPEHINT_TIME
+	TIME
 	// the time duration string
-	TYPEHINT_TIME_DURATION
+	SPAN
 	// the network interface
-	TYPEHINT_IFACE
+	IFACE
 	// the network IPv4 / IPv6 address
-	TYPEHINT_IP
+	IP
 	// the network IPv4 / IPv6 address with mask, CIDR
-	TYPEHINT_CIDR
+	CIDR
 )
-
-// The type-hint of the option type, max to 5-chars
-func (hint OptionTypeHint) String() (str string) {
-	switch hint {
-	case TYPEHINT_INT:
-		str = "INT"
-	case TYPEHINT_UINT:
-		str = "UINT"
-	case TYPEHINT_RAT:
-		str = "RAT"
-	case TYPEHINT_STR:
-		str = "STR"
-	case TYPEHINT_FILE:
-		str = "FILE"
-	case TYPEHINT_FILE_MODE:
-		str = "FMODE"
-	case TYPEHINT_TIME:
-		str = "TIME"
-	case TYPEHINT_TIME_DURATION:
-		str = "SPAN"
-	case TYPEHINT_IFACE:
-		str = "IFACE"
-	case TYPEHINT_IP:
-		str = "IP"
-	case TYPEHINT_CIDR:
-		str = "CIDR"
-	}
-	return
-}
 
 // The option of the StructOpt and used to process the input arguments
 type Option struct {
@@ -125,7 +98,7 @@ func (option *Option) Prepare() (err error) {
 	case reflect.Bool:
 		// should be flip
 		option.option_type = Flip
-		option.type_hint = TYPEHINT_NONE
+		option.type_hint = NONE
 	case reflect.Ptr:
 		typ := option.Value.Type().Elem()
 		// create the dummy value
@@ -162,53 +135,53 @@ func (option *Option) prepare(value reflect.Value) (err error) {
 	case os.File:
 		// the flag / os.File
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_FILE
+		option.type_hint = FILE
 	case os.FileMode:
 		// the flag / os.FileMode
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_FILE_MODE
+		option.type_hint = FMODE
 	case time.Time:
 		// the flag / os.File
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_TIME
+		option.type_hint = TIME
 	case time.Duration:
 		// the flag / os.File
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_TIME_DURATION
+		option.type_hint = SPAN
 	case net.Interface:
 		// the flag / net.Interface
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_IFACE
+		option.type_hint = IFACE
 	case net.IP:
 		// the flag / net.IP
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_IP
+		option.type_hint = IP
 	case net.IPNet:
 		// the flag / net.IPNet
 		option.option_type = Flag
-		option.type_hint = TYPEHINT_CIDR
+		option.type_hint = CIDR
 	default:
 		switch value.Kind() {
 		case reflect.Bool:
 			// the flip
 			option.option_type = Flip
-			option.type_hint = TYPEHINT_NONE
+			option.type_hint = NONE
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			// the flag / sign-int
 			option.option_type = Flag
-			option.type_hint = TYPEHINT_INT
+			option.type_hint = INT
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			// the flag / sign-int
 			option.option_type = Flag
-			option.type_hint = TYPEHINT_UINT
+			option.type_hint = UINT
 		case reflect.Float32, reflect.Float64:
 			// the flag / sign-rational number
 			option.option_type = Flag
-			option.type_hint = TYPEHINT_RAT
+			option.type_hint = RAT
 		case reflect.String:
 			// the flag / string
 			option.option_type = Flag
-			option.type_hint = TYPEHINT_STR
+			option.type_hint = STR
 		default:
 			err = fmt.Errorf("prepare: unhandle field type %v (%T)", value.Kind(), value.Interface())
 			return
@@ -224,15 +197,18 @@ func (option *Option) String() (str string) {
 	help, _ := option.Lookup(TAG_HELP)
 	flag := ""
 	flag_width := 28
-	type_hint := option.type_hint.String()
+
+	type_hint := option.TypeHint().String()
+	if option.TypeHint() == NONE {
+		type_hint = ""
+	}
 
 	switch option.Type() {
 	case Flip, Flag:
 		short_name, _ := option.Lookup(TAG_SHORT)
 		if len(short_name) > 0 {
 			// add the leading -
-			short_name_offset := WidecharSize(short_name) - len([]rune(short_name))
-			short_name = fmt.Sprintf("-%-*v %v", 2-short_name_offset, short_name, type_hint)
+			short_name = fmt.Sprintf("-%-v %v", short_name, type_hint)
 			short_name = strings.TrimSpace(short_name)
 		}
 		short_width_offset := WidecharSize(short_name) - len([]rune(short_name))
@@ -297,7 +273,7 @@ func (option *Option) Set(args ...string) (count int, err error) {
 // the exactly set the value to the option. In the idea case the value should pass
 // the reflect.Ptr and the option.set handle the arbitrary number of pointer
 func (option *Option) set(value reflect.Value, args ...string) (count int, err error) {
-	if option.TypeHint() == TYPEHINT_NONE {
+	if option.TypeHint() == NONE {
 		option.Trace("flip to %v", !value.Bool())
 		value.SetBool(!value.Bool())
 		return
@@ -311,10 +287,10 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 	count = 1
 	arg := args[0]
 	switch option.TypeHint() {
-	case TYPEHINT_STR:
+	case STR:
 		// set string as value
 		value.Set(reflect.ValueOf(arg))
-	case TYPEHINT_INT:
+	case INT:
 		var val int64
 		if val, err = AtoI(arg); err != nil {
 			// cannot encode as int64
@@ -331,7 +307,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 				return
 			}
 		}
-	case TYPEHINT_UINT:
+	case UINT:
 		var val uint64
 		if val, err = AtoU(arg); err != nil {
 			// cannot encode as uint64
@@ -348,7 +324,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 				return
 			}
 		}
-	case TYPEHINT_RAT:
+	case RAT:
 		var val float64
 		if val, err = AtoF(arg); err != nil {
 			// cannot encode as float
@@ -357,7 +333,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 
 		// set string as Float64
 		value.SetFloat(val)
-	case TYPEHINT_FILE:
+	case FILE:
 		info, e := os.Stat(arg)
 		switch {
 		case os.IsNotExist(e):
@@ -375,7 +351,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 		}
 
 		value.Set(reflect.ValueOf(*fd))
-	case TYPEHINT_FILE_MODE:
+	case FMODE:
 		var val uint64
 
 		val, err = AtoU(arg)
@@ -386,14 +362,14 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 
 		filemode := os.FileMode(val)
 		value.Set(reflect.ValueOf(filemode))
-	case TYPEHINT_TIME:
+	case TIME:
 		var timestamp time.Time
 		if timestamp, err = time.Parse(time.RFC3339, arg); err != nil {
 			err = fmt.Errorf("invalid time: %v (%v)", arg, err)
 			return
 		}
 		value.Set(reflect.ValueOf(timestamp))
-	case TYPEHINT_TIME_DURATION:
+	case SPAN:
 		var duration time.Duration
 
 		if duration, err = time.ParseDuration(arg); err != nil {
@@ -401,7 +377,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 			return
 		}
 		value.Set(reflect.ValueOf(duration))
-	case TYPEHINT_IFACE:
+	case IFACE:
 		var iface *net.Interface
 		iface, err = net.InterfaceByName(arg)
 		if err != nil {
@@ -409,7 +385,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 			return
 		}
 		value.Set(reflect.ValueOf(*iface))
-	case TYPEHINT_IP:
+	case IP:
 		ip := net.ParseIP(arg)
 		if ip == nil {
 			// resoved by hostname
@@ -424,7 +400,7 @@ func (option *Option) set(value reflect.Value, args ...string) (count int, err e
 		}
 
 		value.Set(reflect.ValueOf(ip))
-	case TYPEHINT_CIDR:
+	case CIDR:
 		var inet *net.IPNet
 
 		// skip the IP field
