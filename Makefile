@@ -1,6 +1,7 @@
 .PHONY: all clean help lint
 
-SRC := $(wildcard *.go) $(wildcard */*.go)
+GENERATE_SRC := type_string.go typehint_string.go
+SRC := $(wildcard *.go) $(wildcard */*.go) ${GENERATE_SRC}
 BIN := examples/example
 
 all: $(BIN)	# build all
@@ -8,7 +9,7 @@ all: $(BIN)	# build all
 
 clean:		# clean-up the environment
 	@find . -name '*.swp' -delete
-	rm -f $(BIN)
+	rm -f $(BIN) $(GENERATE_SRC)
 
 help:		# show this message
 	@printf "Usage: make [OPTION]\n"
@@ -19,10 +20,14 @@ help:		# show this message
 doc:		# show the document in local
 	godoc -server=localhost:8080 hello.go
 
+$(GENERATE_SRC):
+	@go get golang.org/x/tools/cmd/stringer
+	@PATH=$$PATH:$(shell go env GOPATH)/bin/ go generate
+
 $(BIN): lint
 
-lint:
-	gofmt -w -s $(SRC)
+lint: $(SRC)
+	@gofmt -w -s $^
 	go test -cover -failfast -timeout 2s
 
 %: %.go

@@ -10,6 +10,11 @@ import (
 	"github.com/cmj0121/structopt"
 )
 
+type Sub struct {
+	structopt.Help
+}
+
+// The example command-line
 type Example struct {
 	structopt.Help
 
@@ -25,18 +30,22 @@ type Example struct {
 
 	Price float64 `short:"F" help:"the float or rational number format"`
 
-	*os.File     `help:"open file, default is Read-Only"`
-	*os.FileMode `help:"oct-based file permission"`
+	*os.File     `option:"flag" help:"open file, default is Read-Only"`
+	*os.FileMode `option:"flag" help:"oct-based file permission"`
 
-	*time.Time     `help:"the timestamp of RFC-3339 format"`
-	*time.Duration `help:"the human-readable time span"`
+	*time.Time     `option:"flag" help:"the timestamp of RFC-3339 format"`
+	*time.Duration `option:"flag" help:"the human-readable time span"`
 
-	*net.Interface `help:"network interface"`
-	*net.IPNet     `help:"network address with mask, CIDR"`
-	*net.IP        `help:"the IPv4/IPv6 address"`
+	*net.Interface `option:"flag" help:"network interface"`
+	*net.IPNet     `option:"flag" help:"network address with mask, CIDR"`
+	*net.IP        `option:"flag" help:"the IPv4/IPv6 address"`
+
+	Arg *float64 `help:"example argument"`
+
+	*Sub `help:"sub-command"`
 }
 
-func (example Example) Ver(option *structopt.Option) (err error) {
+func (example Example) Ver(option structopt.Option) (err error) {
 	fmt.Println("v0.0.0")
 	os.Exit(0)
 	return
@@ -62,6 +71,8 @@ func main() {
 		fmt.Printf("IPNet: %v\n", example.IPNet)
 	case example.IP != nil:
 		fmt.Printf("IP: %v\n", example.IP)
+	case example.Arg != nil:
+		fmt.Printf("Arg: %v\n", *example.Arg)
 	default:
 		fmt.Printf("%#v\n", example)
 	}

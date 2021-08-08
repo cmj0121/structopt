@@ -1,4 +1,6 @@
 *.sw[po]
 
+*_string.go
+
 examples/*
 !examples/*.go
