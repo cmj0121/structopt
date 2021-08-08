@@ -1,6 +1,6 @@
 .PHONY: all clean help lint
 
-GENERATE_SRC := optiontype_string.go optiontypehint_string.go
+GENERATE_SRC := type_string.go typehint_string.go
 SRC := $(wildcard *.go) $(wildcard */*.go) ${GENERATE_SRC}
 BIN := examples/example
 
@@ -21,13 +21,13 @@ doc:		# show the document in local
 	godoc -server=localhost:8080 hello.go
 
 $(GENERATE_SRC):
-	go get golang.org/x/tools/cmd/stringer
-	PATH=$$PATH:$(shell go env GOPATH)/bin/ go generate
+	@go get golang.org/x/tools/cmd/stringer
+	@PATH=$$PATH:$(shell go env GOPATH)/bin/ go generate
 
-$(BIN): $(SRC) lint
+$(BIN): lint
 
-lint:
-	gofmt -w -s $(SRC)
+lint: $(SRC)
+	@gofmt -w -s $^
 	go test -cover -failfast -timeout 2s
 
 %: %.go

@@ -10,6 +10,10 @@ import (
 	"github.com/cmj0121/structopt"
 )
 
+type Sub struct {
+	structopt.Help
+}
+
 // The example command-line
 type Example struct {
 	structopt.Help
@@ -37,9 +41,11 @@ type Example struct {
 	*net.IP        `option:"flag" help:"the IPv4/IPv6 address"`
 
 	Arg *float64 `help:"example argument"`
+
+	*Sub `help:"sub-command"`
 }
 
-func (example Example) Ver(option *structopt.Option) (err error) {
+func (example Example) Ver(option structopt.Option) (err error) {
 	fmt.Println("v0.0.0")
 	os.Exit(0)
 	return

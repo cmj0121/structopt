@@ -21,9 +21,9 @@ type StructOpt struct {
 	// The inner log sub-system, used for trace and warning log.
 	*logger.Log
 
-	options       []*Option
-	arg_cmd_opts  []*Option
-	named_options map[string]*Option
+	options       []Option
+	arg_cmd_opts  []Option
+	named_options map[string]Option
 }
 
 // Generate the parse by input struct, or return error message.
@@ -40,8 +40,7 @@ func New(in interface{}) (opt *StructOpt, err error) {
 		Value: value,
 		Log:   logger.New(PROJ_NAME),
 
-		options:       []*Option{},
-		named_options: map[string]*Option{},
+		named_options: map[string]Option{},
 	}
 
 	err = opt.prepare()
@@ -61,7 +60,7 @@ func MustNew(in interface{}) (opt *StructOpt) {
 }
 
 // Syntax-sugar for show help message
-func (opt *StructOpt) Help(option *Option) (err error) {
+func (opt *StructOpt) Help(option Option) (err error) {
 	opt.Usage(nil)
 	os.Exit(0)
 	return
@@ -121,7 +120,7 @@ func (opt *StructOpt) WriteUsage(writer io.Writer, err error) {
 
 // Run as default command-line parser, read from os.Args and show error and usage when parse error.
 func (opt *StructOpt) Run() {
-	if err := opt.Parse(os.Args[1:]...); err != nil {
+	if err := opt.Set(os.Args[1:]...); err != nil {
 		// show the error message
 		opt.Usage(err)
 		// and then exit the program
@@ -129,8 +128,8 @@ func (opt *StructOpt) Run() {
 	}
 }
 
-// Parse the input argument and setup the value for secified fields, or return error.
-func (opt *StructOpt) Parse(args ...string) (err error) {
+// Set the input argument and setup the value for secified fields, or return error.
+func (opt *StructOpt) Set(args ...string) (err error) {
 	disable_short_option := false
 	disable_option := false
 
@@ -236,146 +235,144 @@ func (opt *StructOpt) Parse(args ...string) (err error) {
 
 // Start parse the field of the struct, and raise error if not support field or wrong setting.
 func (opt *StructOpt) prepare() (err error) {
-	base_value := opt.Value.Elem()
+	based := opt.Value.Elem()
 
-	// iterate each field in the struct
-	for idx := 0; idx < base_value.Type().NumField(); idx++ {
-		field := base_value.Type().Field(idx)
-		value := base_value.Field(idx)
-
-		opt.Trace(
-			"#%d field in %v: %-6v (%-8v canset: %v)",
-			idx, base_value.Type(), field.Name, field.Type, value.CanSet(),
-		)
-
-		if !value.CanSet() {
-			// ignore the field that cannot set
-			opt.Debug("skip the cannot set field: %v", field.Name)
-			continue
-		}
-
-		// process the field what we need
-		opt.Trace("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
-		var option *Option
-
-		switch {
-		case field.Type.Kind() == reflect.Struct && field.Anonymous:
-			for f_idx := 0; f_idx < field.Type.NumField(); f_idx++ {
-				sub_field := field.Type.Field(f_idx)
-				sub_value := value.Field(f_idx)
-
-				opt.Trace("#%d sub-field in %v", f_idx, field.Name)
-				if !sub_value.CanSet() {
-					// cannot set the value, skip
-					continue
-				}
-
-				if option, err = opt.add_option(sub_value, sub_field); err != nil {
-					opt.Warn("set %v as option: %v", sub_field.Name, err)
-					return
-				} else if err = opt.add_callback(base_value, option); err != nil {
-					opt.Warn("set %v as option: %v", sub_field.Name, err)
-					return
-				}
-			}
-		default:
-			if option, err = opt.add_option(value, field); err != nil {
-				opt.Warn("set %v as option: %v", field.Name, err)
-				return
-			} else if err = opt.add_callback(base_value, option); err != nil {
-				opt.Warn("set %v as option: %v", field.Name, err)
-				return
-			}
-		}
-	}
-	return
-}
-
-// add the option to the StructOpt
-func (opt *StructOpt) add_option(value reflect.Value, sfield reflect.StructField) (option *Option, err error) {
-	// setup the  option
-	option = &Option{
-		Log:       opt.Log,
-		Value:     value,
-		StructTag: sfield.Tag,
-
-		name:        strings.ToLower(sfield.Name),
-		option_type: Ignore,
-		type_hint:   NONE,
-		options:     map[string]struct{}{},
-	}
-
-	if strings.TrimSpace(string(sfield.Tag)) == TAG_IGNORE {
-		// parse the field but skip
-		opt.Info("skip the option: %v", option.Name())
-		return
-	}
-
-	if err = option.Prepare(); err != nil {
-		// invalid option
-		return
-	}
-
-	switch option.Type() {
-	case Flip, Flag:
-		// append to the option-list
-		opt.options = append(opt.options, option)
-		// the named option
-		name := option.Name()
-		if _, ok := opt.named_options[name]; ok {
-			err = fmt.Errorf("duplicated option name: %v", name)
+	for option := range opt.GetOption() {
+		if err = option.Prepare(); err != nil {
+			opt.Warn("set cannot as option: %v", option.Name(), err)
 			return
 		}
-		opt.named_options[name] = option
-		opt.Trace("set %#v as %v", name, option.Type())
 
-		// the short-name option, if exist
-		if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
-			opt.Trace("set %#v as option", name)
+		switch option.Type() {
+		case Flip, Flag:
+			// append to the option-list
+			opt.options = append(opt.options, option)
+			// the named option
+			name := option.Name()
 			if _, ok := opt.named_options[name]; ok {
 				err = fmt.Errorf("duplicated option name: %v", name)
 				return
 			}
 			opt.named_options[name] = option
-		}
-	default:
-		// append to the option-list
-		opt.arg_cmd_opts = append(opt.arg_cmd_opts, option)
-	}
+			opt.Trace("set %#v as %v", name, option.Type())
 
+			// the short-name option, if exist
+			if name, ok := option.Lookup(TAG_SHORT); ok && name != "" {
+				opt.Trace("set %#v as option", name)
+				if _, ok := opt.named_options[name]; ok {
+					err = fmt.Errorf("duplicated option name: %v", name)
+					return
+				}
+				opt.named_options[name] = option
+			}
+		default:
+			// append to the option-list
+			opt.arg_cmd_opts = append(opt.arg_cmd_opts, option)
+		}
+
+		// add the callback function if need
+		if fn_name, ok := option.Lookup(TAG_CALLBACK); ok {
+			// always convert as the Title format
+			fn_name = strings.Title(fn_name)
+			opt.Trace("try add callback: %v", fn_name)
+
+			// search the local callback
+			if fn_value := based.MethodByName(fn_name); fn_value.IsValid() && !fn_value.IsZero() {
+				opt.Debug("found possible local callback: %T", fn_value.Interface())
+				// NOTE - using (func(Option) error) instead of (Callback)
+				if fn, ok := fn_value.Interface().(func(Option) error); ok {
+					// found the callback
+					option.SetCallback(fn)
+					continue
+				}
+			}
+
+			// search the global callback
+			if fn_value := reflect.ValueOf(opt).MethodByName(fn_name); fn_value.IsValid() && !fn_value.IsZero() {
+				opt.Debug("found possible global callback: %T", fn_value.Interface())
+				// NOTE - using (func(Option) error) instead of (Callback)
+				if fn, ok := fn_value.Interface().(func(Option) error); ok {
+					// found the callback
+					option.SetCallback(fn)
+					continue
+				}
+			}
+
+			err = fmt.Errorf("cannot find the callback: %v", fn_name)
+			return
+		}
+	}
 	return
 }
 
-func (opt *StructOpt) add_callback(base_value reflect.Value, option *Option) (err error) {
-	if fn_name, ok := option.Lookup(TAG_CALLBACK); ok {
-		// always convert as the Title format
-		fn_name = strings.Title(fn_name)
-		opt.Trace("try add callback: %v", fn_name)
+// generate new option by current struct field
+func (opt *StructOpt) GetOption() (ch <-chan Option) {
+	tmp := make(chan Option, 1)
 
-		// search the local callback
-		if fn_value := base_value.MethodByName(fn_name); fn_value.IsValid() && !fn_value.IsZero() {
-			opt.Debug("found possible local callback: %T", fn_value.Interface())
-			// NOTE - using (func(*Option) error) instead of (Callback)
-			if fn, ok := fn_value.Interface().(func(*Option) error); ok {
-				// found the callback
-				option.Callback = fn
-				return
+	go func() {
+		defer close(tmp)
+
+		based := opt.Value.Elem()
+		for idx := 0; idx < based.Type().NumField(); idx++ {
+			field := based.Type().Field(idx)
+			value := based.Field(idx)
+
+			opt.Trace(
+				"#%d field in %v: %-6v (%-8v canset: %v)",
+				idx, based.Type(), field.Name, field.Type, value.CanSet(),
+			)
+
+			if !value.CanSet() {
+				// ignore the field that cannot set
+				opt.Debug("skip the cannot set field: %v", field.Name)
+				continue
+			} else if strings.TrimSpace(string(field.Tag)) == TAG_IGNORE {
+				// parse the field but skip
+				opt.Info("skip the field: %v", field.Name)
+				continue
+			}
+
+			// process the field what we need
+			opt.Debug("process field: %-6v (%v) `%v`", field.Name, field.Type, field.Tag)
+			switch {
+			case field.Type.Kind() == reflect.Struct && field.Anonymous:
+				// the nested struct
+				for f_idx := 0; f_idx < field.Type.NumField(); f_idx++ {
+					sub_field := field.Type.Field(f_idx)
+					sub_value := value.Field(f_idx)
+
+					opt.Trace("#%d sub-field in %v: %v", f_idx, field.Name, sub_field.Name)
+					if !sub_value.CanSet() {
+						// cannot set the value, skip
+						continue
+					}
+
+					tmp <- &Raw{
+						Log:       opt.Log,
+						Value:     sub_value,
+						StructTag: sub_field.Tag,
+
+						name:        strings.ToLower(sub_field.Name),
+						option_type: Ignore,
+						type_hint:   NONE,
+						options:     map[string]struct{}{},
+					}
+				}
+			default:
+				tmp <- &Raw{
+					Log:       opt.Log,
+					Value:     value,
+					StructTag: field.Tag,
+
+					name:        strings.ToLower(field.Name),
+					option_type: Ignore,
+					type_hint:   NONE,
+					options:     map[string]struct{}{},
+				}
 			}
 		}
+	}()
 
-		// search the global callback
-		if fn_value := reflect.ValueOf(opt).MethodByName(fn_name); fn_value.IsValid() && !fn_value.IsZero() {
-			opt.Debug("found possible global callback: %T", fn_value.Interface())
-			// NOTE - using (func(*Option) error) instead of (Callback)
-			if fn, ok := fn_value.Interface().(func(*Option) error); ok {
-				// found the callback
-				option.Callback = fn
-				return
-			}
-		}
-
-		err = fmt.Errorf("cannot find the callback: %v", fn_name)
-	}
-
+	ch = tmp
 	return
 }
