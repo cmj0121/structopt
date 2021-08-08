@@ -1,29 +1,5 @@
 package structopt
 
-// The phsudo-option used in the StructOpt which may flip/flag, arguments
-// or sub-command.
-type Option interface {
-	Prepare() error
-	// The name of the option which should be unique in StructOpt.
-	Name() string
-	// The help message show in StructOpt.
-	String() string
-	// Set the option by pass arguments, return number of arguments used
-	// or return error.
-	Set(...string) (int, error)
-	// Show the option type
-	Type() Type
-	// Show the type-hint
-	TypeHint() TypeHint
-	// Set the callback function
-	SetCallback(Callback)
-	// Lookup the tag by key
-	Lookup(string) (string, bool)
-}
-
-// The callback function which is used when option been set
-type Callback func(option Option) error
-
 // The enum type of the option
 //go:generate stringer -type=Type
 type Type int
@@ -71,3 +47,26 @@ const (
 	// the network IPv4 / IPv6 address with mask, CIDR
 	CIDR
 )
+
+// The callback function which is used when option been set
+type Callback func(option Option)
+
+// The phsudo-option used in the StructOpt which may flip/flag, arguments
+// or sub-command.
+type Option interface {
+	// The name of the option which should be unique in StructOpt.
+	Name() string
+	// The short-name of the option, may empty
+	ShortName() string
+	// The help message show in StructOpt.
+	String() string
+	// Set the option by pass arguments, return number of arguments used
+	// or return error.
+	Set(...string) (int, error)
+	// Show the option type
+	Type() Type
+	// Show the type-hint
+	TypeHint() TypeHint
+	// Set callback fn
+	SetCallback(fn Callback)
+}

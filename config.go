@@ -2,6 +2,8 @@ package structopt
 
 import (
 	"regexp"
+
+	"github.com/cmj0121/logger"
 )
 
 // pre-define meta
@@ -10,8 +12,8 @@ const (
 	PROJ_NAME = "structopt"
 	// the version info
 	MAJOR = 0
-	MINOR = 1
-	MACRO = 1
+	MINOR = 2
+	MACRO = 0
 )
 
 // pre-define TAG key
@@ -41,3 +43,6 @@ var (
 	RE_FLOAT = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)?\.[0-9]+$`)
 	RE_RAT   = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)/-?[1-9][0-9]*$`)
 )
+
+// The inner log sub-system, used for trace and warning log.
+var log = logger.New(PROJ_NAME)
