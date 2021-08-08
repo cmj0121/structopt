@@ -29,6 +29,7 @@ const (
 	TAG_OPTION     = "option"
 	TAG_OPTION_SEP = ","
 	// used to node the field allow data truncated
+	TAG_SKIP  = "skip"
 	TAG_FLAG  = "flag"
 	TAG_TRUNC = "trunc"
 )

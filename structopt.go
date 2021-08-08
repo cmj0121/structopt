@@ -12,12 +12,11 @@ type StructOpt struct {
 	// The raw value of the input struct, should be the pointer of the value.
 	reflect.Value
 
-	// Name of the command-line, default is the name of struct.
-	name string
-
 	// callback function when set
 	Callback
 
+	// Name of the command-line, default is the name of struct.
+	name string
 	// The properties of the Option used in StructOpt.
 	named_options map[string]Option
 }
@@ -56,6 +55,29 @@ func New(in interface{}) (opt *StructOpt, err error) {
 
 		name:          strings.ToLower(value.Elem().Type().Name()),
 		named_options: map[string]Option{},
+	}
+
+	// generate the options
+	based := opt.Value.Elem()
+	for idx := 0; idx < based.NumField(); idx++ {
+		field := based.Type().Field(idx)
+		value := opt.Value.Elem().Field(idx)
+		log.Trace("process #%d field: %v (%v)", idx, field.Name, field.Type)
+
+		switch {
+		case field.Type.Kind() == reflect.Struct && field.Anonymous:
+			for sub_idx := 0; sub_idx < field.Type.NumField(); sub_idx++ {
+				sub_field := field.Type.Field(sub_idx)
+				sub_value := value.Field(sub_idx)
+				log.Trace("process #%d sub-field in %v: %v (%v)", sub_idx, field.Type, sub_field.Name, sub_field.Type)
+
+				// add option
+				log.Info("process %#v (%v) as option", sub_value, sub_field.Type)
+			}
+		default:
+			// add option
+			log.Info("process %#v (%v) as option", value, field.Type)
+		}
 	}
 	return
 }

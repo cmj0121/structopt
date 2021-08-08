@@ -13,6 +13,19 @@ type Sub struct {
 type Example struct {
 	structopt.Help
 
+	Ignore bool `-`
+	Skip bool `option:"skip"`
+
+	// used to process as flip
+	Flip bool `short:"f" help:"flip the value"`
+	// used to process as flag
+	Name string `short:"n" help:"set as name"`
+	// force set as flag
+	Age *uint `short:"a" option:"flag" help:"force set as flag"`
+
+	// treate as argument
+	Argument *string
+
 	*Sub `help:"sub-command"`
 }
 
