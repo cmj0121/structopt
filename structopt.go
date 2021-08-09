@@ -19,6 +19,9 @@ type StructOpt struct {
 	name string
 	// The properties of the Option used in StructOpt.
 	named_options map[string]Option
+
+	ff_options  []Option
+	sub_options []Option
 }
 
 // Must generate the parse, or raise panic when failure.
@@ -171,6 +174,14 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 		}
 		opt.named_options[name] = option
 		log.Info("add new named option: %v", name)
+		switch option.Type() {
+		case Flip:
+			// add the option as sub-command
+			opt.ff_options = append(opt.ff_options, option)
+		case Subcommand:
+			// add the option as sub-command
+			opt.sub_options = append(opt.sub_options, option)
+		}
 
 		if name = option.ShortName(); name != "" {
 			if old, ok := opt.named_options[name]; ok {
