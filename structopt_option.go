@@ -28,8 +28,10 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 	disable_option := false
 
 	for idx < len(args) {
+		var count int
+
 		arg := args[idx]
-		log.Trace("parse #%v argument: %#v", idx, arg)
+		log.Info("parse #%v argument: %#v", idx, arg)
 
 		switch {
 		case len(arg) == 0:
@@ -44,23 +46,60 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 			log.Debug("#%v argument %#v: disable option", idx, arg)
 		case len(arg) > 1 && !disable_option && arg[:2] == "--":
 			// long option
-			log.Info("#%v argument %#v", idx, arg)
+			log.Debug("#%v argument %#v", idx, arg)
+
+			if option, ok := opt.named_options[arg[2:]]; !ok {
+				err = fmt.Errorf("unknown option: %v", arg)
+				return
+			} else if count, err = option.Set(args[idx:]...); err != nil {
+				err = fmt.Errorf("set %v: %v", arg, err)
+				return
+			}
+			idx += count
 		case !disable_short_option && arg[:1] == "-":
 			// short option
 			log.Trace("#%v argument %#v", idx, arg)
 			switch len([]rune(arg[1:])) {
 			case 1:
 				// single short option
-				log.Info("#%v argument %#v: single short option", idx, arg)
+				log.Debug("#%v argument %#v: single short option", idx, arg)
+
+				if option, ok := opt.named_options[arg[1:]]; !ok {
+					err = fmt.Errorf("unknown option: %v", arg)
+					return
+				} else if count, err = option.Set(args[idx:]...); err != nil {
+					err = fmt.Errorf("set %v: %v", arg, err)
+					return
+				}
+				idx += count
 			default:
 				// multi- short options
 				for short_opt_idx, short_opt := range arg[1:] {
-					log.Info("#%v argument %#v: #%v short option: %#v", idx, arg, short_opt_idx, string(short_opt))
+					log.Debug("#%v argument %#v: #%v short option: %#v", idx, arg, short_opt_idx, string(short_opt))
+
+					if option, ok := opt.named_options[arg[1:]]; !ok {
+						err = fmt.Errorf("unknown option: %v", arg)
+						return
+					} else if count, err = option.Set(); err != nil {
+						err = fmt.Errorf("set %v: %v", arg, err)
+						return
+					}
+					idx += count
 				}
 			}
 		default:
 			// argument
-			log.Info("#%v argument %#v", idx, arg)
+			log.Debug("#%v argument %#v", idx, arg)
+			// sub-command
+			if option, ok := opt.named_options[arg]; !ok {
+				err = fmt.Errorf("unknown argument: %v", arg)
+				return
+			} else if _, err = option.Set(args[idx+1:]...); err != nil {
+				err = fmt.Errorf("set %v: %v", arg, err)
+				return
+			}
+			// NOTE - in sub-command case, there are no remains args
+			idx = len(args)
 		}
 
 		idx++

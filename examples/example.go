@@ -14,7 +14,7 @@ type Example struct {
 	structopt.Help
 
 	Ignore bool `-`
-	Skip bool `option:"skip"`
+	Skip   bool `option:"skip"`
 
 	// used to process as flip
 	Flip bool `short:"f" help:"flip the value"`

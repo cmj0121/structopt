@@ -72,13 +72,151 @@ func New(in interface{}) (opt *StructOpt, err error) {
 				log.Trace("process #%d sub-field in %v: %v (%v)", sub_idx, field.Type, sub_field.Name, sub_field.Type)
 
 				// add option
-				log.Info("process %#v (%v) as option", sub_value, sub_field.Type)
+				if err = opt.new_option(based, sub_value, sub_field); err != nil {
+					log.Warn("cannot set %v as option: %v", sub_field.Name, err)
+					err = fmt.Errorf("cannot set %v as option: %v", sub_field.Name, err)
+					return
+				}
 			}
 		default:
 			// add option
-			log.Info("process %#v (%v) as option", value, field.Type)
+			if err = opt.new_option(based, value, field); err != nil {
+				log.Warn("cannot set %v as option: %v", field.Name, err)
+				err = fmt.Errorf("cannot set %v as option: %v", field.Name, err)
+				return
+			}
 		}
 	}
+	return
+}
+
+func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field reflect.StructField) (err error) {
+	var option Option
+	log.Info("process %v (%v) as option", field.Name, field.Type)
+
+	tags := map[string]struct{}{}
+	for _, tag := range strings.Split(field.Tag.Get(TAG_OPTION), TAG_OPTION_SEP) {
+		// tag = strings.TrimSpace(tag)
+		tags[tag] = struct{}{}
+	}
+
+	_, skip := tags[TAG_SKIP]
+
+	switch {
+	case TAG_IGNORE == strings.TrimSpace(string(field.Tag)):
+		log.Debug("option %v set ignore", field.Name)
+		return
+	case skip:
+		log.Debug("option %v set skip", field.Name)
+		return
+	default:
+		switch field.Type.Kind() {
+		case reflect.Bool:
+			flip := &FlipFlag{
+				Value:     value,
+				StructTag: field.Tag,
+				name:      field.Name,
+			}
+			option = flip
+		case reflect.Ptr:
+			// may sub-command or argument
+			_, flag := tags[TAG_FLAG]
+			switch {
+			case flag:
+				// force set as flag
+				log.Crit("not implemented: %v (%v) as flag", field.Name, field.Type)
+				return
+			case field.Type.Elem().Kind() == reflect.Struct:
+				if value.IsZero() {
+					// create dummy instance, and not set back
+					value = reflect.New(field.Type.Elem())
+					log.Trace("create dummy instance from %v: %v", field.Type.Elem(), value)
+				}
+
+				var sub *StructOpt
+				if sub, err = New(value.Interface()); err != nil {
+					log.Warn("create sub-command from %v: %v", field.Type.Elem(), err)
+					err = fmt.Errorf("create sub-command from %v: %v", field.Type.Elem(), err)
+					return
+				}
+
+				if name := field.Tag.Get(TAG_NAME); name != "" {
+					// override the name
+					sub.name = name
+				}
+				option = sub
+			default:
+				log.Crit("not implemented: %v (%v) as argument", field.Name, field.Type)
+				return
+			}
+		default:
+			log.Crit("not implemented: %v (%v) as flag", field.Name, field.Type)
+			return
+		}
+	}
+
+	// setup the callback
+	if err = opt.set_callback(based, field.Tag.Get(TAG_CALLBACK), option); err != nil {
+		err = fmt.Errorf("cannot set option %v: %v", option.Name(), err)
+		return
+	}
+
+	switch option.Type() {
+	case Flip, Subcommand:
+		name := option.Name()
+		if old, ok := opt.named_options[name]; ok {
+			log.Warn("duplicated field: %v (%v)", name, old)
+			err = fmt.Errorf("duplicated field: %v", name)
+			return
+		}
+		opt.named_options[name] = option
+		log.Info("add new named option: %v", name)
+
+		if name = option.ShortName(); name != "" {
+			if old, ok := opt.named_options[name]; ok {
+				log.Warn("duplicated field: %v (%v)", name, old)
+				err = fmt.Errorf("duplicated field: %v", name)
+				return
+			}
+			opt.named_options[name] = option
+			log.Info("add new named option: %v", name)
+		}
+	default:
+		log.Warn("not implemented set option: %v", option.Type())
+		err = fmt.Errorf("not implemented set option: %v", option.Type())
+		return
+	}
+
+	return
+}
+
+func (opt *StructOpt) set_callback(based reflect.Value, fn string, option Option) (err error) {
+	if fn == "" {
+		// no-need to process callback
+		return
+	}
+
+	fn = strings.Title(fn)
+	log.Trace("try set callback: %v", fn)
+	local_fn := based.MethodByName(fn)
+	if local_fn.IsValid() && !local_fn.IsZero() {
+		if callback, ok := local_fn.Interface().(func(Option)); ok {
+			log.Debug("set local callback: %v", callback)
+			option.SetCallback(callback)
+			return
+		}
+	}
+
+	global_fn := reflect.ValueOf(opt).MethodByName(fn)
+	if global_fn.IsValid() && !global_fn.IsZero() {
+		if callback, ok := global_fn.Interface().(func(Option)); ok {
+			log.Debug("set global callback: %v", callback)
+			option.SetCallback(callback)
+			return
+		}
+	}
+
+	err = fmt.Errorf("cannot found callback: %v", fn)
 	return
 }
 
