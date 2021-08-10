@@ -124,6 +124,9 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 				Value:     value,
 				StructTag: field.Tag,
 				name:      strings.ToLower(field.Name),
+
+				option_type: Flip,
+				option_type_hint: NONE,
 			}
 			option = flip
 		case reflect.Ptr:
@@ -342,7 +345,7 @@ func (opt *StructOpt) Help(option Option) {
 func (opt *StructOpt) Run() {
 	if _, err := opt.Set(os.Args[1:]...); err != nil {
 		// show the error message
-		os.Stderr.WriteString(fmt.Sprintf("error: %v\n%v", err, opt.String()))
+		os.Stderr.WriteString(fmt.Sprintf("error: %v\n%v", err, opt.Usage()))
 		// and then exit the program
 		os.Exit(1)
 	}

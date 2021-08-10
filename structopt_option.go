@@ -103,8 +103,8 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 			if option, ok := opt.named_options[arg[2:]]; !ok {
 				err = fmt.Errorf("unknown option: %v", arg)
 				return
-			} else if count, err = option.Set(args[idx:]...); err != nil {
-				err = fmt.Errorf("set %v: %v", arg, err)
+			} else if count, err = option.Set(args[idx+1:]...); err != nil {
+				// cannot set value
 				return
 			}
 			idx += count
@@ -119,8 +119,8 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 				if option, ok := opt.named_options[arg[1:]]; !ok {
 					err = fmt.Errorf("unknown option: %v", arg)
 					return
-				} else if count, err = option.Set(args[idx:]...); err != nil {
-					err = fmt.Errorf("set %v: %v", arg, err)
+				} else if count, err = option.Set(args[idx+1:]...); err != nil {
+					// cannot set value
 					return
 				}
 				idx += count

@@ -10,6 +10,10 @@ import (
 
 type Sub struct {
 	structopt.Help
+
+	Flip *bool `short:"f" option:"flag" help:"flip the value"`
+	Name *string `short:"n" option:"flag" help:"set as name"`
+	Age *uint `short:"a" option:"flag" help:"force set as flag"`
 }
 
 type Example struct {
@@ -18,12 +22,9 @@ type Example struct {
 	Ignore bool `-`
 	Skip   bool `option:"skip"`
 
-	// used to process as flip
 	Flip bool `short:"f" help:"flip the value"`
-	// used to process as flag
 	Name string `short:"n" help:"set as name"`
-	// force set as flag
-	Age *uint `short:"a" option:"flag" help:"force set as flag"`
+	Age uint `short:"a" help:"force set as flag"`
 
 	Now  time.Time  `short:"t" help:"type the RFC-3389 time format"`
 	CIDR *net.IPNet `option:"flag" help:"please type the valid CIDR"`

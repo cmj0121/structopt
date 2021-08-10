@@ -71,6 +71,56 @@ func (option *FlipFlag) String() (str string) {
 }
 
 func (option *FlipFlag) Set(args ...string) (count int, err error) {
+	value := option.Value
+	for value.Kind() == reflect.Ptr {
+		if value.IsZero() {
+			// create dummy instance
+			value.Set(reflect.New(value.Type().Elem()))
+		}
+		value = value.Elem()
+	}
+
+	switch option.Type() {
+	case Flip:
+		// flip the value
+		value.SetBool(!value.Bool())
+	case Flag:
+		if len(args) == 0 {
+			err = fmt.Errorf("%v should pass %v", option.Name(), option.TypeHint())
+			return
+		}
+
+		arg := args[0]
+		switch option.TypeHint() {
+		case INT:
+			var val int64
+
+			if val, err = AtoI(arg); err != nil {
+				err = fmt.Errorf("pass %v: %v", arg, err)
+				return
+			}
+			value.SetInt(val)
+		case UINT:
+			var val uint64
+
+			if val, err = AtoU(arg); err != nil {
+				err = fmt.Errorf("pass %#v as INT: %v", arg, err)
+				return
+			}
+			value.SetUint(val)
+		case STR:
+			// just set the raw string
+			value.Set(reflect.ValueOf(arg))
+		default:
+			err = fmt.Errorf("not implemented set %v", option.TypeHint())
+			return
+		}
+		count ++
+	default:
+		err = fmt.Errorf("should not be here: %v", option.Type())
+		return
+	}
+
 	if option.Callback != nil {
 		// call the callback
 		log.Trace("execute callback %v", option.Callback)
