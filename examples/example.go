@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"time"
 
 	"github.com/cmj0121/structopt"
 )
@@ -22,6 +24,9 @@ type Example struct {
 	Name string `short:"n" help:"set as name"`
 	// force set as flag
 	Age *uint `short:"a" option:"flag" help:"force set as flag"`
+
+	Now  time.Time  `short:"t" help:"type the RFC-3389 time format"`
+	CIDR *net.IPNet `option:"flag" help:"please type the valid CIDR"`
 
 	// treate as argument
 	Argument *string `name:"arg" help:"required argument"`
