@@ -2,6 +2,7 @@ package structopt
 
 import (
 	"fmt"
+	"strings"
 )
 
 // The display-name of the field
@@ -17,8 +18,59 @@ func (opt *StructOpt) ShortName() (name string) {
 }
 
 // Show the usage message
+func (opt *StructOpt) Usage() (str string) {
+	var help_message []string
+
+	usage := fmt.Sprintf("usage: %v", opt.Name())
+	if len(opt.ff_options) > 0 {
+		// add option
+		usage = fmt.Sprintf("%v [OPTION]", usage)
+	}
+
+	for _, option := range opt.arg_options {
+		// add argument
+		usage = fmt.Sprintf("%v %v", usage, strings.ToUpper(option.Name()))
+	}
+
+	if len(opt.sub_options) > 0 {
+		// add option
+		usage = fmt.Sprintf("%v [SUB]", usage)
+	}
+
+	help_message = append(help_message, usage)
+
+	if len(opt.ff_options) > 0 {
+		help_message = append(help_message, "")
+		help_message = append(help_message, "options:")
+
+		for _, option := range opt.ff_options {
+			// add the option row
+			help_message = append(help_message, option.String())
+		}
+	}
+
+	if len(opt.sub_options) > 0 || len(opt.arg_options) > 0 {
+		help_message = append(help_message, "")
+		help_message = append(help_message, "arguments:")
+
+		for _, option := range opt.arg_options {
+			// add the option row
+			help_message = append(help_message, option.String())
+		}
+
+		for _, option := range opt.sub_options {
+			// add the option row
+			help_message = append(help_message, option.String())
+		}
+	}
+
+	str = fmt.Sprintf("%v\n", strings.Join(help_message, "\n"))
+	return
+}
+
 func (opt *StructOpt) String() (str string) {
-	str = fmt.Sprintf("usage: %v\n", opt.Name())
+	str = fmt.Sprintf("    %-12v %v", opt.Name(), opt.help)
+	str = strings.TrimRight(str, " ")
 	return
 }
 

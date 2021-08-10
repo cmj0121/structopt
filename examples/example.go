@@ -24,7 +24,7 @@ type Example struct {
 	Age *uint `short:"a" option:"flag" help:"force set as flag"`
 
 	// treate as argument
-	Argument *string
+	Argument *string `name:"arg" help:"required argument"`
 
 	*Sub `help:"sub-command"`
 }

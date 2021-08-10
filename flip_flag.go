@@ -1,7 +1,9 @@
 package structopt
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 )
 
 // The option of flip
@@ -12,11 +14,14 @@ type FlipFlag struct {
 	// The field of the option in the struct
 	reflect.StructTag
 
+	// The callback function, may nil
+	Callback
+
 	// Name of the command-line, default is the name of struct.
 	name string
 
-	// The callback function, may nil
-	Callback
+	option_type      Type
+	option_type_hint TypeHint
 }
 
 func (option *FlipFlag) Name() (name string) {
@@ -32,9 +37,39 @@ func (option *FlipFlag) ShortName() (name string) {
 	name = option.StructTag.Get(TAG_SHORT)
 	return
 }
+
 func (option *FlipFlag) String() (str string) {
+	// show as the formatted option which has three parts: margin, option and help
+	help, _ := option.Lookup(TAG_HELP)
+	flag := ""
+	flag_width := 24
+
+	type_hint := option.TypeHint().String()
+	if option.TypeHint() == NONE {
+		type_hint = ""
+	}
+
+	switch option.Type() {
+	case Flip, Flag:
+		short_name, _ := option.Lookup(TAG_SHORT)
+		if len(short_name) > 0 {
+			// add the leading -
+			short_name = fmt.Sprintf("-%-v %v", short_name, type_hint)
+			short_name = strings.TrimSpace(short_name)
+		}
+		short_width_offset := WidecharSize(short_name) - len([]rune(short_name))
+		flag = fmt.Sprintf("%*v --%v %v", 8-short_width_offset, short_name, option.Name(), type_hint)
+	default:
+		flag = fmt.Sprintf("%v", strings.ToUpper(option.Name()))
+		flag_width = 12
+	}
+
+	flag_width_offset := WidecharSize(flag) - len([]rune(flag))
+	str = fmt.Sprintf("    %-*v %v", flag_width-flag_width_offset, flag, help)
+	str = strings.TrimRight(str, " ")
 	return
 }
+
 func (option *FlipFlag) Set(args ...string) (count int, err error) {
 	if option.Callback != nil {
 		// call the callback
@@ -46,24 +81,13 @@ func (option *FlipFlag) Set(args ...string) (count int, err error) {
 
 // Show the option type
 func (option *FlipFlag) Type() (typ Type) {
-	field_type := option.Value.Type()
-
-	for field_type.Kind() == reflect.Ptr {
-		// try to find the under struct
-		field_type = field_type.Elem()
-	}
-
-	switch field_type.Kind() {
-	case reflect.Bool:
-		typ = Flip
-	default:
-		typ = Flag
-	}
+	typ = option.option_type
 	return
 }
 
 // Show the type-hint
 func (option *FlipFlag) TypeHint() (typ TypeHint) {
+	typ = option.option_type_hint
 	return
 }
 

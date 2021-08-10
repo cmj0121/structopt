@@ -2,9 +2,11 @@ package structopt
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // The struct parser as the argument options.
@@ -17,10 +19,13 @@ type StructOpt struct {
 
 	// Name of the command-line, default is the name of struct.
 	name string
+	// The help message
+	help string
 	// The properties of the Option used in StructOpt.
 	named_options map[string]Option
 
 	ff_options  []Option
+	arg_options []Option
 	sub_options []Option
 }
 
@@ -95,7 +100,7 @@ func New(in interface{}) (opt *StructOpt, err error) {
 
 func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field reflect.StructField) (err error) {
 	var option Option
-	log.Info("process %v (%v) as option", field.Name, field.Type)
+	log.Debug("process %v (%v) as option", field.Name, field.Type)
 
 	tags := map[string]struct{}{}
 	for _, tag := range strings.Split(field.Tag.Get(TAG_OPTION), TAG_OPTION_SEP) {
@@ -118,7 +123,7 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 			flip := &FlipFlag{
 				Value:     value,
 				StructTag: field.Tag,
-				name:      field.Name,
+				name:      strings.ToLower(field.Name),
 			}
 			option = flip
 		case reflect.Ptr:
@@ -127,8 +132,11 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 			switch {
 			case flag:
 				// force set as flag
-				log.Crit("not implemented: %v (%v) as flag", field.Name, field.Type)
-				return
+				if option, err = opt.new_flip_flag_arg(value, field); err != nil {
+					// cannot create ff option
+					err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
+					return
+				}
 			case field.Type.Elem().Kind() == reflect.Struct:
 				if value.IsZero() {
 					// create dummy instance, and not set back
@@ -147,14 +155,25 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 					// override the name
 					sub.name = name
 				}
+				sub.help = field.Tag.Get(TAG_HELP)
 				option = sub
 			default:
-				log.Crit("not implemented: %v (%v) as argument", field.Name, field.Type)
-				return
+				var args *FlipFlag
+
+				if args, err = opt.new_flip_flag_arg(value, field); err != nil {
+					// cannot create ff option
+					err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
+					return
+				}
+				args.option_type = Argument
+				option = args
 			}
 		default:
-			log.Crit("not implemented: %v (%v) as flag", field.Name, field.Type)
-			return
+			if option, err = opt.new_flip_flag_arg(value, field); err != nil {
+				// cannot create ff option
+				err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
+				return
+			}
 		}
 	}
 
@@ -164,38 +183,120 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 		return
 	}
 
+	name := option.Name()
+	if old, ok := opt.named_options[name]; ok {
+		log.Warn("duplicated field: %v (%v)", name, old)
+		err = fmt.Errorf("duplicated field: %v", name)
+		return
+	}
+	opt.named_options[name] = option
 	switch option.Type() {
-	case Flip, Subcommand:
-		name := option.Name()
+	case Ignore:
+		// ignore the option
+	case Flip, Flag:
+		// add the option as sub-command
+		opt.ff_options = append(opt.ff_options, option)
+		log.Info("add new named option: --%v", name)
+	case Argument:
+		// add the option as argument
+		opt.arg_options = append(opt.arg_options, option)
+		log.Info("add new argument: %v", name)
+	case Subcommand:
+		// add the option as sub-command
+		opt.sub_options = append(opt.sub_options, option)
+		log.Info("add new sub-command: %v", name)
+	default:
+		log.Warn("not implemented set option: %v", option.Type())
+		err = fmt.Errorf("not implemented set option: %v", option.Type())
+		return
+	}
+
+	if name = option.ShortName(); name != "" {
 		if old, ok := opt.named_options[name]; ok {
 			log.Warn("duplicated field: %v (%v)", name, old)
 			err = fmt.Errorf("duplicated field: %v", name)
 			return
 		}
 		opt.named_options[name] = option
-		log.Info("add new named option: %v", name)
-		switch option.Type() {
-		case Flip:
-			// add the option as sub-command
-			opt.ff_options = append(opt.ff_options, option)
-		case Subcommand:
-			// add the option as sub-command
-			opt.sub_options = append(opt.sub_options, option)
-		}
+		log.Debug("add new short named option: %v", name)
+	}
 
-		if name = option.ShortName(); name != "" {
-			if old, ok := opt.named_options[name]; ok {
-				log.Warn("duplicated field: %v (%v)", name, old)
-				err = fmt.Errorf("duplicated field: %v", name)
-				return
-			}
-			opt.named_options[name] = option
-			log.Info("add new named option: %v", name)
+	return
+}
+
+func (opt *StructOpt) new_flip_flag_arg(value reflect.Value, field reflect.StructField) (option *FlipFlag, err error) {
+	elm := value
+	typ := field.Type
+	log.Trace("try create option from %v (%v)", field.Name, value)
+
+	for elm.Kind() == reflect.Ptr {
+		switch {
+		case elm.IsZero():
+			elm = reflect.New(typ.Elem()).Elem()
+		default:
+			elm = elm.Elem()
 		}
+	}
+
+	option = &FlipFlag{
+		Value:     value,
+		StructTag: field.Tag,
+
+		name: strings.ToLower(field.Name),
+	}
+	log.Debug("try create option %v: %T/%v", option.Name(), elm.Interface(), elm.Kind())
+
+	switch elm.Interface().(type) {
+	case os.File:
+		// the flag / os.File
+		option.option_type = Flag
+		option.option_type_hint = FILE
+	case os.FileMode:
+		// the flag / os.FileMode
+		option.option_type = Flag
+		option.option_type_hint = FMODE
+	case time.Time:
+		// the flag / os.File
+		option.option_type = Flag
+		option.option_type_hint = TIME
+	case time.Duration:
+		// the flag / os.File
+		option.option_type = Flag
+		option.option_type_hint = SPAN
+	case net.Interface:
+		// the flag / net.Interface
+		option.option_type = Flag
+		option.option_type_hint = IFACE
+	case net.IP:
+		// the flag / net.IP
+		option.option_type = Flag
+		option.option_type_hint = IP
+	case net.IPNet:
+		// the flag / net.IPNet
+		option.option_type = Flag
+		option.option_type_hint = CIDR
 	default:
-		log.Warn("not implemented set option: %v", option.Type())
-		err = fmt.Errorf("not implemented set option: %v", option.Type())
-		return
+		switch elm.Kind() {
+		case reflect.Bool:
+			option.option_type = Flip
+			option.option_type_hint = NONE
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			option.option_type = Flag
+			option.option_type_hint = INT
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			option.option_type = Flag
+			option.option_type_hint = UINT
+		case reflect.Float32, reflect.Float64:
+			// the flag / sign-rational number
+			option.option_type = Flag
+			option.option_type_hint = RAT
+		case reflect.String:
+			option.option_type = Flag
+			option.option_type_hint = STR
+		default:
+			log.Crit("not implemented: %v (%v) as flag", field.Name, typ)
+			return
+		}
 	}
 
 	return
@@ -233,7 +334,7 @@ func (opt *StructOpt) set_callback(based reflect.Value, fn string, option Option
 
 // Syntax-sugar for show help message
 func (opt *StructOpt) Help(option Option) {
-	os.Stderr.WriteString(opt.String())
+	os.Stderr.WriteString(opt.Usage())
 	os.Exit(0)
 }
 
