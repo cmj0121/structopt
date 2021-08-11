@@ -1,6 +1,10 @@
 package main
 
 import (
+	"os"
+)
+
+import (
 	"encoding/json"
 	"fmt"
 	"net"
@@ -20,6 +24,10 @@ type Sub struct {
 type Example struct {
 	structopt.Help
 
+	Version bool `short:"v" help:"show version info" callback:"ver"`
+
+	private bool `help:"should not exposed"`
+
 	Ignore bool `-`
 	Skip   bool `option:"skip"`
 
@@ -35,6 +43,11 @@ type Example struct {
 	Arg2 *string `help:"required argument"`
 
 	*Sub `help:"sub-command"`
+}
+
+func (example Example) Ver(option structopt.Option) {
+	fmt.Println("example: v0.0.0")
+	os.Exit(0)
 }
 
 func main() {

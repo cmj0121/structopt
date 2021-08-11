@@ -75,6 +75,8 @@ func New(in interface{}) (opt *StructOpt, err error) {
 		log.Trace("process #%d field: %v (%v)", idx, field.Name, field.Type)
 
 		switch {
+		case !value.CanSet():
+			// field cannot set, skip
 		case field.Type.Kind() == reflect.Struct && field.Anonymous:
 			for sub_idx := 0; sub_idx < field.Type.NumField(); sub_idx++ {
 				sub_field := field.Type.Field(sub_idx)

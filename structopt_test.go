@@ -36,6 +36,8 @@ type Sub struct {
 type Foo struct {
 	Help
 
+	private bool `help:"should not exposed"`  // nolint
+
 	Ignore1 bool `-` // nolint
 	Ignore2 int  `option:"skip"`
 
