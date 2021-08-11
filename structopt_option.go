@@ -79,6 +79,7 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 	disable_short_option := false
 	disable_option := false
 
+	arg_idx := 0
 	for idx < len(args) {
 		var count int
 
@@ -141,17 +142,29 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 			}
 		default:
 			// argument
-			log.Debug("#%v argument %#v", idx, arg)
-			// sub-command
-			if option, ok := opt.named_options[arg]; !ok {
-				err = fmt.Errorf("unknown argument: %v", arg)
-				return
-			} else if _, err = option.Set(args[idx+1:]...); err != nil {
-				err = fmt.Errorf("set %v: %v", arg, err)
-				return
+			switch {
+			case arg_idx < len(opt.arg_options):
+				log.Debug("#%v argument %#v", idx, arg)
+
+				option := opt.arg_options[arg_idx]
+				// NOTE - argument always use one args
+				if _, err = option.Set(args[idx]); err != nil {
+					err = fmt.Errorf("set %v: %v", strings.ToUpper(option.Name()), err)
+					return
+				}
+				arg_idx ++
+			default:
+				// sub-command
+				if option, ok := opt.named_options[arg]; !ok {
+					err = fmt.Errorf("unknown argument: %v", arg)
+					return
+				} else if _, err = option.Set(args[idx+1:]...); err != nil {
+					err = fmt.Errorf("set %v: %v", arg, err)
+					return
+				}
+				// NOTE - in sub-command case, there are no remains args
+				idx = len(args)
 			}
-			// NOTE - in sub-command case, there are no remains args
-			idx = len(args)
 		}
 
 		idx++

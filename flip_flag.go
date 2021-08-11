@@ -63,7 +63,7 @@ func (option *FlipFlag) String() (str string) {
 		short_width_offset := WidecharSize(short_name) - len([]rune(short_name))
 		flag = fmt.Sprintf("%*v --%v %v", 8-short_width_offset, short_name, option.Name(), type_hint)
 	default:
-		flag = fmt.Sprintf("%v", strings.ToUpper(option.Name()))
+		flag = fmt.Sprintf("%v [%v]", strings.ToUpper(option.Name()), option.TypeHint())
 		flag_width = 12
 	}
 
@@ -87,7 +87,7 @@ func (option *FlipFlag) Set(args ...string) (count int, err error) {
 	case Flip:
 		// flip the value
 		value.SetBool(!value.Bool())
-	case Flag:
+	case Flag, Argument:
 		if len(args) == 0 {
 			err = fmt.Errorf("%v should pass %v", option.Name(), option.TypeHint())
 			return

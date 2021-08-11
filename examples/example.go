@@ -1,10 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"time"
-	"encoding/json"
 
 	"github.com/cmj0121/structopt"
 )
@@ -31,7 +31,8 @@ type Example struct {
 	CIDR *net.IPNet `option:"flag" help:"please type the valid CIDR"`
 
 	// treate as argument
-	Argument *string `name:"arg" help:"required argument"`
+	Arg1 *int `help:"required argument"`
+	Arg2 *string `help:"required argument"`
 
 	*Sub `help:"sub-command"`
 }
