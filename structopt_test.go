@@ -57,6 +57,7 @@ func Example() {
 	// usage: foo [OPTION] [SUB]
 	//
 	// options:
+	//           -h --help          show this message
 	//       -n STR --name STR      please type your name
 	//      -a UINT --age UINT      please type your age
 	//      -t TIME --now TIME      type the RFC-3389 time format

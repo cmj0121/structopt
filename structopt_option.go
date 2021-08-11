@@ -129,7 +129,7 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 				for short_opt_idx, short_opt := range arg[1:] {
 					log.Debug("#%v argument %#v: #%v short option: %#v", idx, arg, short_opt_idx, string(short_opt))
 
-					if option, ok := opt.named_options[arg[1:]]; !ok {
+					if option, ok := opt.named_options[string(short_opt)]; !ok {
 						err = fmt.Errorf("unknown option: %v", arg)
 						return
 					} else if count, err = option.Set(); err != nil {

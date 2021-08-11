@@ -125,7 +125,7 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 				StructTag: field.Tag,
 				name:      strings.ToLower(field.Name),
 
-				option_type: Flip,
+				option_type:      Flip,
 				option_type_hint: NONE,
 			}
 			option = flip

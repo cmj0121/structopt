@@ -2,8 +2,11 @@ package structopt
 
 import (
 	"fmt"
+	"net"
+	"os"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // The option of flip
@@ -111,11 +114,96 @@ func (option *FlipFlag) Set(args ...string) (count int, err error) {
 		case STR:
 			// just set the raw string
 			value.Set(reflect.ValueOf(arg))
+		case RAT:
+			var val float64
+			if val, err = AtoF(arg); err != nil {
+				// cannot encode as float
+				return
+			}
+
+			// set string as Float64
+			value.SetFloat(val)
+		case FILE:
+			info, e := os.Stat(arg)
+			switch {
+			case os.IsNotExist(e):
+				err = fmt.Errorf("file %#v does not exist", value)
+				return
+			case info.IsDir():
+				err = fmt.Errorf("%#v is not file", value)
+				return
+			}
+
+			fd, e := os.Open(arg)
+			if e != nil {
+				err = fmt.Errorf("cannot open file %#v: %v", value, e)
+				return
+			}
+
+			value.Set(reflect.ValueOf(*fd))
+		case FMODE:
+			var val uint64
+
+			val, err = AtoU(arg)
+			if err != nil || val >= (1<<32) {
+				err = fmt.Errorf("invalid file-mode: %v (%v)", value, err)
+				return
+			}
+
+			filemode := os.FileMode(val)
+			value.Set(reflect.ValueOf(filemode))
+		case TIME:
+			var timestamp time.Time
+			if timestamp, err = time.Parse(time.RFC3339, arg); err != nil {
+				err = fmt.Errorf("invalid time: %v (%v)", arg, err)
+				return
+			}
+			value.Set(reflect.ValueOf(timestamp))
+		case SPAN:
+			var duration time.Duration
+
+			if duration, err = time.ParseDuration(arg); err != nil {
+				err = fmt.Errorf("invalid time duration: %v (%v)", arg, err)
+				return
+			}
+			value.Set(reflect.ValueOf(duration))
+		case IFACE:
+			var iface *net.Interface
+			iface, err = net.InterfaceByName(arg)
+			if err != nil {
+				err = fmt.Errorf("invalid IFace: %v", arg)
+				return
+			}
+			value.Set(reflect.ValueOf(*iface))
+		case IP:
+			ip := net.ParseIP(arg)
+			if ip == nil {
+				// resoved by hostname
+				var ips []net.IP
+
+				ips, err = net.LookupIP(arg)
+				if err != nil || len(ips) == 0 {
+					err = fmt.Errorf("invalid IP: %v", arg)
+					return
+				}
+				ip = ips[0]
+			}
+
+			value.Set(reflect.ValueOf(ip))
+		case CIDR:
+			var inet *net.IPNet
+
+			// skip the IP field
+			if _, inet, err = net.ParseCIDR(arg); err != nil {
+				// err = fmt.Errorf("invalid CIDR: %v (%v)", value, err)
+				return
+			}
+			value.Set(reflect.ValueOf(*inet))
 		default:
 			err = fmt.Errorf("not implemented set %v", option.TypeHint())
 			return
 		}
-		count ++
+		count++
 	default:
 		err = fmt.Errorf("should not be here: %v", option.Type())
 		return
