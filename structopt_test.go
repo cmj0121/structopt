@@ -27,56 +27,42 @@ func TestInvalidInput(t *testing.T) {
 	}
 }
 
-type Dummy struct {
+type Sub struct {
 	Help
 
-	Flip bool `short:"f" help:"store true/false"`
+	Rat float64 `help:"the rational or float number"`
+}
 
-	Age    uint  `short:"a" name:"âge" help:"The utf-8 field"`
-	Amount int64 `short:"A" help:"the sign integer"`
-	Base   int8  `short:"b" help:"check base" option:"trunc"`
+type Foo struct {
+	Help
 
-	Price   float32 `help:"the sign float number"`
-	Unicode string  `short:"多" name:"ユニコード" help:"the UTF-8 unicode option"`
+	Ignore1 bool `-` // nolint
+	Ignore2 int  `option:"skip"`
 
-	// pre-define type
-	*os.File       `option:"flag" help:"open file, default is Read-Only"`
-	*time.Time     `option:"flag" help:"the timestamp of RFC-3339 format"`
-	*time.Duration `option:"flag" help:"the human-readable time duration"`
-	*os.FileMode   `option:"flag" help:"oct-based file permission"`
+	Name string `short:"n" help:"please type your name"`
+	Age  uint   `short:"a" help:"please type your age"`
 
-	IFace   *net.Interface `option:"flag" help:"network interface"`
-	CIDR    *net.IPNet     `option:"flag" help:"network address with mask, CIDR"`
-	*net.IP `option:"flag" help:"the IPv4/IPv6 address"`
+	Now  time.Time  `short:"t" help:"type the RFC-3389 time format"`
+	CIDR *net.IPNet `option:"flag" help:"please type the valid CIDR"`
 
-	ArgStr *string `help:"The string argument"`
+	*Sub `help:"the sub-command"`
 }
 
 func Example() {
-	dummy := Dummy{}
-	parser := MustNew(&dummy)
-	parser.Name = "foo"
+	example := Foo{}
+	parser := MustNew(&example)
 
-	parser.WriteUsage(os.Stdout, nil)
+	os.Stdout.WriteString(parser.Usage())
 	// Output:
-	// usage: foo [OPTION] ARGSTR
+	// usage: foo [OPTION] [SUB]
 	//
 	// options:
-	//           -h --help              show this message
-	//           -f --flip              store true/false
-	//      -a UINT --âge UINT          The utf-8 field
-	//       -A INT --amount INT        the sign integer
-	//       -b INT --base INT          check base
-	//              --price RAT         the sign float number
-	//      -多 STR --ユニコード STR    the UTF-8 unicode option
-	//              --file FILE         open file, default is Read-Only
-	//              --time TIME         the timestamp of RFC-3339 format
-	//              --duration SPAN     the human-readable time duration
-	//              --filemode FMODE    oct-based file permission
-	//              --iface IFACE       network interface
-	//              --cidr CIDR         network address with mask, CIDR
-	//              --ip IP             the IPv4/IPv6 address
+	//           -h --help          show this message
+	//       -n STR --name STR      please type your name
+	//      -a UINT --age UINT      please type your age
+	//      -t TIME --now TIME      type the RFC-3389 time format
+	//              --cidr CIDR     please type the valid CIDR
 	//
 	// arguments:
-	//     ARGSTR (STR)       The string argument
+	//     sub          the sub-command
 }
