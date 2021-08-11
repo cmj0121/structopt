@@ -79,6 +79,11 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 	disable_short_option := false
 	disable_option := false
 
+	if opt.ref.IsValid() {
+		// copy the instance to the parent StructOpt
+		opt.ref.Set(opt.Value)
+	}
+
 	arg_idx := 0
 	for idx < len(args) {
 		var count int
@@ -152,7 +157,7 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 					err = fmt.Errorf("set %v: %v", strings.ToUpper(option.Name()), err)
 					return
 				}
-				arg_idx ++
+				arg_idx++
 			default:
 				// sub-command
 				if option, ok := opt.named_options[arg]; !ok {

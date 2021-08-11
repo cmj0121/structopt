@@ -13,6 +13,8 @@ import (
 type StructOpt struct {
 	// The raw value of the input struct, should be the pointer of the value.
 	reflect.Value
+	// the reference instance of the parent StructOpt
+	ref reflect.Value
 
 	// callback function when set
 	Callback
@@ -141,6 +143,7 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 					return
 				}
 			case field.Type.Elem().Kind() == reflect.Struct:
+				ref := value
 				if value.IsZero() {
 					// create dummy instance, and not set back
 					value = reflect.New(field.Type.Elem())
@@ -158,6 +161,7 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 					// override the name
 					sub.name = name
 				}
+				sub.ref = ref
 				sub.help = field.Tag.Get(TAG_HELP)
 				option = sub
 			default:

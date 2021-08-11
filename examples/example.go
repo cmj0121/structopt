@@ -31,7 +31,7 @@ type Example struct {
 	CIDR *net.IPNet `option:"flag" help:"please type the valid CIDR"`
 
 	// treate as argument
-	Arg1 *int `help:"required argument"`
+	Arg1 *int    `help:"required argument"`
 	Arg2 *string `help:"required argument"`
 
 	*Sub `help:"sub-command"`
@@ -45,6 +45,13 @@ func main() {
 	encode, err := json.MarshalIndent(example, "", "    ")
 	if err != nil {
 		fmt.Printf("%#v\n", example)
+	} else {
+		fmt.Printf("%v\n", string(encode))
+	}
+
+	encode, err = json.MarshalIndent(example.Sub, "", "    ")
+	if err != nil {
+		fmt.Printf("%#v\n", example.Sub)
 	} else {
 		fmt.Printf("%v\n", string(encode))
 	}
