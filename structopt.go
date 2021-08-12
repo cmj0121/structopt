@@ -125,13 +125,11 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 	default:
 		switch field.Type.Kind() {
 		case reflect.Bool:
-			flip := &FlipFlag{
-				Value:     value,
-				StructTag: field.Tag,
-				name:      strings.ToLower(field.Name),
-
-				option_type:      Flip,
-				option_type_hint: NONE,
+			var flip *FlipFlag
+			if flip, err = opt.new_flip_flag_arg(value, field); err != nil {
+				// cannot create ff option
+				err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
+				return
 			}
 			option = flip
 		case reflect.Ptr:
@@ -254,6 +252,11 @@ func (opt *StructOpt) new_flip_flag_arg(value reflect.Value, field reflect.Struc
 
 		name: strings.ToLower(field.Name),
 	}
+	if value.IsValid() && !value.IsZero() {
+		// set the default value
+		option.default_value = fmt.Sprintf("%v", value)
+	}
+
 	if val := option.StructTag.Get(TAG_CHOICE); val != "" {
 		choices := strings.Split(val, " ")
 		sort.Strings(choices)

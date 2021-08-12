@@ -55,7 +55,10 @@ func (example Example) Ver(option structopt.Option) {
 }
 
 func main() {
-	example := Example{}
+	example := Example{
+		Name: "default",
+		Age:  5566,
+	}
 	parser := structopt.MustNew(&example)
 	parser.Run()
 

@@ -23,9 +23,10 @@ type FlipFlag struct {
 
 	// Name of the command-line, default is the name of struct.
 	name string
-
 	// The pre-defined value can used.
 	choices []string
+	// The default value
+	default_value string
 
 	option_type      Type
 	option_type_hint TypeHint
@@ -73,10 +74,17 @@ func (option *FlipFlag) String() (str string) {
 
 	flag_width_offset := WidecharSize(flag) - len([]rune(flag))
 	str = fmt.Sprintf("    %-*v %v", flag_width-flag_width_offset, flag, help)
+
 	if len(option.choices) > 0 {
 		// show the choices
 		str = fmt.Sprintf("%v %v", str, option.choices)
 	}
+
+	if option.default_value != "" {
+		// has default value
+		str = fmt.Sprintf("%v (default: %v)", str, option.default_value)
+	}
+
 	str = strings.TrimRight(str, " ")
 	return
 }
