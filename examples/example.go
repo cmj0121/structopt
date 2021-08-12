@@ -10,6 +10,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/cmj0121/logger"
 	"github.com/cmj0121/structopt"
 )
 
@@ -23,6 +24,9 @@ type Sub struct {
 
 type Example struct {
 	structopt.Help
+
+	*logger.Log `-`
+	LogLevel    string `name:"log" choice:"warn info debug trac3" help:"set log level"`
 
 	Version bool `short:"v" help:"show version info" callback:"ver"`
 

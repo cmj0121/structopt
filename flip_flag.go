@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 )
@@ -22,6 +23,9 @@ type FlipFlag struct {
 
 	// Name of the command-line, default is the name of struct.
 	name string
+
+	// The pre-defined value can used.
+	choices []string
 
 	option_type      Type
 	option_type_hint TypeHint
@@ -69,6 +73,10 @@ func (option *FlipFlag) String() (str string) {
 
 	flag_width_offset := WidecharSize(flag) - len([]rune(flag))
 	str = fmt.Sprintf("    %-*v %v", flag_width-flag_width_offset, flag, help)
+	if len(option.choices) > 0 {
+		// show the choices
+		str = fmt.Sprintf("%v %v", str, option.choices)
+	}
 	str = strings.TrimRight(str, " ")
 	return
 }
@@ -92,8 +100,16 @@ func (option *FlipFlag) Set(args ...string) (count int, err error) {
 			err = fmt.Errorf("%v should pass %v", option.Name(), option.TypeHint())
 			return
 		}
-
 		arg := args[0]
+
+		if len(option.choices) > 0 {
+			idx := sort.SearchStrings(option.choices, arg)
+			if idx == len(option.choices) || option.choices[idx] != arg {
+				err = fmt.Errorf("set %v: %v not in %v", option.Name(), arg, option.choices)
+				return
+			}
+		}
+
 		switch option.TypeHint() {
 		case INT:
 			var val int64

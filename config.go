@@ -24,6 +24,7 @@ const (
 	TAG_SHORT    = "short"
 	TAG_HELP     = "help"
 	TAG_CALLBACK = "callback"
+	TAG_CHOICE   = "choice"
 
 	// special tag which no-need provide the valie
 	TAG_OPTION     = "option"

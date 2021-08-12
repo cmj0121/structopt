@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 )
@@ -253,6 +254,12 @@ func (opt *StructOpt) new_flip_flag_arg(value reflect.Value, field reflect.Struc
 
 		name: strings.ToLower(field.Name),
 	}
+	if val := option.StructTag.Get(TAG_CHOICE); val != "" {
+		choices := strings.Split(val, " ")
+		sort.Strings(choices)
+		option.choices = choices
+	}
+
 	log.Debug("try create option %v: %T/%v", option.Name(), elm.Interface(), elm.Kind())
 
 	switch elm.Interface().(type) {
