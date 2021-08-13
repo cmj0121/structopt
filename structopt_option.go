@@ -49,7 +49,7 @@ func (opt *StructOpt) Usage() (str string) {
 		}
 	}
 
-	if len(opt.sub_options) > 0 || len(opt.arg_options) > 0 {
+	if len(opt.arg_options) > 0 {
 		help_message = append(help_message, "")
 		help_message = append(help_message, "arguments:")
 
@@ -57,6 +57,11 @@ func (opt *StructOpt) Usage() (str string) {
 			// add the option row
 			help_message = append(help_message, option.String())
 		}
+	}
+
+	if len(opt.sub_options) > 0 {
+		help_message = append(help_message, "")
+		help_message = append(help_message, "sub-commands:")
 
 		for _, option := range opt.sub_options {
 			// add the option row

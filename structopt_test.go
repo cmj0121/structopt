@@ -68,6 +68,6 @@ func Example() {
 	//      -t TIME --now TIME      type the RFC-3389 time format
 	//              --cidr CIDR     please type the valid CIDR
 	//
-	// arguments:
+	// sub-commands:
 	//     sub          the sub-command
 }
