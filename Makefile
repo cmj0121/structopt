@@ -2,7 +2,7 @@
 
 GENERATE_SRC := type_string.go typehint_string.go
 SRC := $(wildcard *.go) $(wildcard */*.go) ${GENERATE_SRC}
-BIN := examples/example
+BIN := $(subst .go,,$(wildcard examples/*.go))
 
 all: $(BIN)	# build all
 	@pre-commit install
