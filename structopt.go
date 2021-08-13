@@ -73,7 +73,7 @@ func New(in interface{}) (opt *StructOpt, err error) {
 	for idx := 0; idx < based.NumField(); idx++ {
 		field := based.Type().Field(idx)
 		value := opt.Value.Elem().Field(idx)
-		log.Trace("process #%d field: %v (%v)", idx, field.Name, field.Type)
+		log.Trace("process #%d field: %v (%v/%v)", idx, field.Name, field.Type, field.Type.Kind())
 
 		switch {
 		case !value.CanSet():
@@ -105,7 +105,6 @@ func New(in interface{}) (opt *StructOpt, err error) {
 
 func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field reflect.StructField) (err error) {
 	var option Option
-	log.Debug("process %v (%v) as option", field.Name, field.Type)
 
 	tags := map[string]struct{}{}
 	for _, tag := range strings.Split(field.Tag.Get(TAG_OPTION), TAG_OPTION_SEP) {
@@ -115,6 +114,7 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 
 	_, skip := tags[TAG_SKIP]
 
+	log.Debug("process %v (%v) as option (skip: %v, kind: %v)", field.Name, field.Type, skip, field.Type.Kind())
 	switch {
 	case TAG_IGNORE == strings.TrimSpace(string(field.Tag)):
 		log.Debug("option %v set ignore", field.Name)
@@ -128,7 +128,6 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 			var flip *FlipFlag
 			if flip, err = opt.new_flip_flag_arg(value, field); err != nil {
 				// cannot create ff option
-				err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
 				return
 			}
 			option = flip
@@ -179,7 +178,6 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 		default:
 			if option, err = opt.new_flip_flag_arg(value, field); err != nil {
 				// cannot create ff option
-				err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
 				return
 			}
 		}
@@ -263,8 +261,7 @@ func (opt *StructOpt) new_flip_flag_arg(value reflect.Value, field reflect.Struc
 		option.choices = choices
 	}
 
-	log.Debug("try create option %v: %T/%v", option.Name(), elm.Interface(), elm.Kind())
-
+	log.Debug("try create option %v: %T (kind: %v)", option.Name(), elm.Interface(), elm.Kind())
 	switch elm.Interface().(type) {
 	case os.File:
 		// the flag / os.File
@@ -313,7 +310,8 @@ func (opt *StructOpt) new_flip_flag_arg(value reflect.Value, field reflect.Struc
 			option.option_type = Flag
 			option.option_type_hint = STR
 		default:
-			log.Crit("not implemented: %v (%v) as flag", field.Name, typ)
+			log.Warn("not implemented: %v (type: %v, kind: %v) as flag", field.Name, typ, elm.Kind())
+			err = fmt.Errorf("not implemented: %v (%v)", typ, elm.Kind())
 			return
 		}
 	}

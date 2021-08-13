@@ -1,13 +1,10 @@
 package main
 
 import (
-	"os"
-)
-
-import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/cmj0121/logger"
