@@ -25,6 +25,7 @@ const (
 	TAG_HELP     = "help"
 	TAG_CALLBACK = "callback"
 	TAG_CHOICE   = "choice"
+	TAG_DEFAULT  = "default"
 
 	// special tag which no-need provide the valie
 	TAG_OPTION     = "option"

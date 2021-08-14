@@ -33,7 +33,7 @@ type Example struct {
 	Skip   bool `option:"skip"`
 
 	Flip bool   `short:"f" help:"flip the value"`
-	Name string `short:"n" help:"set as name"`
+	Name string `short:"n" help:"set as name" default:"john"`
 	Age  uint   `short:"a" help:"force set as flag"`
 
 	Now  time.Time  `short:"t" help:"type the RFC-3389 time format"`

@@ -316,6 +316,18 @@ func (opt *StructOpt) new_flip_flag_arg(value reflect.Value, field reflect.Struc
 		}
 	}
 
+	// set the default if provided by TAG
+	if dvalue := field.Tag.Get(TAG_DEFAULT); dvalue != "" {
+		// override the default_value if set in the TAG
+		option.default_value = dvalue
+		// then set as default
+		_, err = option.Set(dvalue)
+		log.Info("override the %v default: %v (%v)", field.Name, dvalue, err)
+		if err != nil {
+			err = fmt.Errorf("invalid %v default value %v: %v", field.Name, dvalue, err)
+			return
+		}
+	}
 	return
 }
 

@@ -46,14 +46,17 @@ type Foo struct {
 	Name string `short:"n" help:"please type your name"`
 	Age  uint   `short:"a" help:"please type your age"`
 
-	Now  time.Time  `short:"t" help:"type the RFC-3389 time format"`
+	Now  time.Time  `short:"t" help:"type the RFC-3389 time format" default:"2020-01-02T03:04:05Z"`
 	CIDR *net.IPNet `option:"flag" help:"please type the valid CIDR"`
 
 	*Sub `help:"the sub-command"`
 }
 
 func Example() {
-	example := Foo{}
+	example := Foo{
+		Name: "john",
+		Now:  time.Now(),
+	}
 	parser := MustNew(&example)
 
 	os.Stdout.WriteString(parser.Usage())
@@ -63,9 +66,9 @@ func Example() {
 	// options:
 	//           -h --help          show this message
 	//       -l STR --level STR     set the log level [debug info trace warn]
-	//       -n STR --name STR      please type your name
+	//       -n STR --name STR      please type your name (default: john)
 	//      -a UINT --age UINT      please type your age
-	//      -t TIME --now TIME      type the RFC-3389 time format
+	//      -t TIME --now TIME      type the RFC-3389 time format (default: 2020-01-02T03:04:05Z)
 	//              --cidr CIDR     please type the valid CIDR
 	//
 	// sub-commands:
