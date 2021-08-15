@@ -200,3 +200,8 @@ func (opt *StructOpt) SetCallback(fn Callback) {
 	// set callback function
 	opt.Callback = fn
 }
+
+func (opt *StructOpt) IsRequired() (required bool) {
+	required = false
+	return
+}

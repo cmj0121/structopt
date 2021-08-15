@@ -113,6 +113,7 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 	}
 
 	_, skip := tags[TAG_SKIP]
+	_, required := tags[TAG_REQUIRED]
 
 	log.Debug("process %v (%v) as option (skip: %v, kind: %v)", field.Name, field.Type, skip, field.Type.Kind())
 	switch {
@@ -130,18 +131,22 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 				// cannot create ff option
 				return
 			}
+			flip.required = required
 			option = flip
 		case reflect.Ptr:
 			// may sub-command or argument
 			_, flag := tags[TAG_FLAG]
 			switch {
 			case flag:
+				var flip *FlipFlag
 				// force set as flag
-				if option, err = opt.new_flip_flag_arg(value, field); err != nil {
+				if flip, err = opt.new_flip_flag_arg(value, field); err != nil {
 					// cannot create ff option
 					err = fmt.Errorf("cannot create option %v: %v", field.Name, err)
 					return
 				}
+				flip.required = required
+				option = flip
 			case field.Type.Elem().Kind() == reflect.Struct:
 				ref := value
 				if value.IsZero() {
@@ -173,13 +178,17 @@ func (opt *StructOpt) new_option(based reflect.Value, value reflect.Value, field
 					return
 				}
 				args.option_type = Argument
+				args.required = required
 				option = args
 			}
 		default:
-			if option, err = opt.new_flip_flag_arg(value, field); err != nil {
+			var flip *FlipFlag
+			if flip, err = opt.new_flip_flag_arg(value, field); err != nil {
 				// cannot create ff option
 				return
 			}
+			flip.required = required
+			option = flip
 		}
 	}
 
@@ -369,10 +378,30 @@ func (opt *StructOpt) Help(option Option) {
 
 // Run as default command-line parser, read from os.Args and show error and usage when parse error.
 func (opt *StructOpt) Run() {
+	defer func() {
+		if r := recover(); r != nil {
+			os.Stderr.WriteString(fmt.Sprintf("%v\n%v", r, opt.Usage()))
+			// and then exit the program
+			os.Exit(1)
+		}
+	}()
+
 	if _, err := opt.Set(os.Args[1:]...); err != nil {
-		// show the error message
-		os.Stderr.WriteString(fmt.Sprintf("error: %v\n%v", err, opt.Usage()))
-		// and then exit the program
-		os.Exit(1)
+		msg := fmt.Sprintf("error: %v", err)
+		panic(msg)
+	}
+
+	// The check the required and all arguments
+	for _, option := range opt.ff_options {
+		if option.IsRequired() && option.IsZero() {
+			msg := fmt.Sprintf("error: --%v is required", strings.ToLower(option.Name()))
+			panic(msg)
+		}
+	}
+	for _, argument := range opt.arg_options {
+		if argument.IsZero() {
+			msg := fmt.Sprintf("error: %v is required", strings.ToUpper(argument.Name()))
+			panic(msg)
+		}
 	}
 }

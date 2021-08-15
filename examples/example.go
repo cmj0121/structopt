@@ -32,7 +32,7 @@ type Example struct {
 	Ignore bool `-`
 	Skip   bool `option:"skip"`
 
-	Flip bool   `short:"f" help:"flip the value"`
+	Flip bool   `short:"f" option:"required" help:"flip the value"`
 	Name string `short:"n" help:"set as name" default:"john"`
 	Age  uint   `short:"a" help:"force set as flag"`
 

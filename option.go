@@ -69,4 +69,8 @@ type Option interface {
 	TypeHint() TypeHint
 	// Set callback fn
 	SetCallback(fn Callback)
+	// Check the option is required
+	IsRequired() bool
+	// Check the value is Zero()
+	IsZero() bool
 }

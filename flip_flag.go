@@ -27,7 +27,8 @@ type FlipFlag struct {
 	choices []string
 	// The default value
 	default_value string
-
+	// option is required
+	required         bool
 	option_type      Type
 	option_type_hint TypeHint
 }
@@ -257,4 +258,9 @@ func (option *FlipFlag) TypeHint() (typ TypeHint) {
 func (option *FlipFlag) SetCallback(fn Callback) {
 	// override the callback
 	option.Callback = fn
+}
+
+func (opt *FlipFlag) IsRequired() (required bool) {
+	required = opt.required
+	return
 }
