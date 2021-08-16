@@ -13,7 +13,7 @@ const (
 	// the version info
 	MAJOR = 0
 	MINOR = 2
-	MACRO = 7
+	MACRO = 8
 )
 
 // pre-define TAG key
