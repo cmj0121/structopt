@@ -35,4 +35,23 @@ func main() {
 }
 ```
 
+## Tag ##
+The structopt provides severals pre-define tag and use to identify the field:
+
+| Tag      | Value    | Description                                                              |
+|----------|----------|--------------------------------------------------------------------------|
+| -        |          | Ignore parse the field                                                   |
+| name     |          | The customied field name of the field                                    |
+| short    |          | The customied rune of the field as a shortcut                            |
+| help     |          | The description or help message                                          |
+| callback |          | The callback function defined and execute when set value                 |
+| choice   |          | Pre-defined value that only can be set in the field (separate by spece)  |
+| default  |          | The default value of the field                                           |
+|----------|----------|--------------------------------------------------------------------------|
+| option   |          | The customied option that used to set the propertied (separate by comma) |
+|          | skip     | Same as '-' and skip process the field                                   |
+|          | flag     | Force set the field as the flag                                          |
+|          | trunc    | The value can be truncated when set, usually set in the INT and UINT     |
+|          | required | Force required the field cannot be empty value                           |
+
 [0]: https://golang.org/ref/spec#Struct_types
