@@ -16,7 +16,7 @@ type Sub struct {
 
 	Flip *bool   `short:"f" option:"flag" help:"flip the value"`
 	Name *string `short:"n" option:"flag" help:"set as name"`
-	Age  *uint   `short:"a" option:"flag" help:"force set as flag"`
+	Age  *uint   `short:"a" option:"flag required" help:"force set as flag"`
 }
 
 type Example struct {

@@ -180,6 +180,8 @@ func (opt *StructOpt) Set(args ...string) (idx int, err error) {
 		idx++
 	}
 
+	// The check the required and all arguments, exit program if not matched
+	opt.CheckRequired()
 	return
 }
 

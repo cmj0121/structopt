@@ -378,6 +378,14 @@ func (opt *StructOpt) Help(option Option) {
 
 // Run as default command-line parser, read from os.Args and show error and usage when parse error.
 func (opt *StructOpt) Run() {
+	if _, err := opt.Set(os.Args[1:]...); err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("%v\n%v", err, opt.Usage()))
+		// and then exit the program
+		os.Exit(1)
+	}
+}
+
+func (opt *StructOpt) CheckRequired() {
 	defer func() {
 		if r := recover(); r != nil {
 			os.Stderr.WriteString(fmt.Sprintf("%v\n%v", r, opt.Usage()))
@@ -386,22 +394,17 @@ func (opt *StructOpt) Run() {
 		}
 	}()
 
-	if _, err := opt.Set(os.Args[1:]...); err != nil {
-		msg := fmt.Sprintf("error: %v", err)
-		panic(msg)
-	}
-
 	// The check the required and all arguments
 	for _, option := range opt.ff_options {
 		if option.IsRequired() && option.IsZero() {
-			msg := fmt.Sprintf("error: --%v is required", strings.ToLower(option.Name()))
-			panic(msg)
+			err := fmt.Errorf("error: --%v is required", strings.ToLower(option.Name()))
+			panic(err)
 		}
 	}
 	for _, argument := range opt.arg_options {
 		if argument.IsZero() {
-			msg := fmt.Sprintf("error: %v is required", strings.ToUpper(argument.Name()))
-			panic(msg)
+			err := fmt.Errorf("error: %v is required", strings.ToUpper(argument.Name()))
+			panic(err)
 		}
 	}
 }
